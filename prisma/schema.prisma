@@ -16,6 +16,7 @@ model User {
   profile        CandidateProfile?
   resumes        Resume[]
   policy         ApplicationPolicy?
+  automation     AutomationConfig?
 }
 
 model CandidateProfile {
@@ -41,6 +42,7 @@ model CandidateProfile {
   employmentTypes    String[]
   workAuthorization  String?
   noticePeriod       String?
+  applications       Application[]
 }
 
 model Resume {
@@ -64,6 +66,7 @@ model ApplicationPolicy {
   excludedKeywords      String[]
   minimumMatchScore     Int?
   maxApplicationsPerDay Int?
+  autoApplyEnabled      Boolean  @default(false)
 }
 
 model JobSource {
@@ -107,6 +110,7 @@ model Job {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   analysis             JobAnalysis?
+  applications         Application[]
 
   @@unique([sourceId, externalId])
 }
@@ -124,4 +128,81 @@ model JobAnalysis {
   locationMatch   String?
   reasoning       String
   createdAt       DateTime @default(now())
+}
+
+enum ApplicationStatus {
+  DISCOVERED
+  ANALYZING
+  REJECTED
+  MATCHED
+  QUEUED
+  RESUME_GENERATING
+  READY_TO_APPLY
+  APPLYING
+  SUBMITTED
+  VERIFYING
+  VERIFIED
+  FAILED
+  RETRYING
+  NEEDS_HUMAN
+  CANCELLED
+}
+
+model Application {
+  id             Int               @id @default(autoincrement())
+  candidateId    Int
+  candidate      CandidateProfile  @relation(fields: [candidateId], references: [id])
+  jobId          Int
+  job            Job               @relation(fields: [jobId], references: [id])
+  canonicalJobId String
+  status         ApplicationStatus @default(DISCOVERED)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  events         ApplicationEvent[]
+
+  @@unique([candidateId, canonicalJobId])
+}
+
+model ApplicationEvent {
+  id            Int         @id @default(autoincrement())
+  applicationId Int
+  application   Application @relation(fields: [applicationId], references: [id])
+  jobId         Int
+  eventType     String
+  payload       Json?
+  createdAt     DateTime    @default(now())
+}
+
+model AutomationConfig {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  user             User      @relation(fields: [userId], references: [id])
+  autoApplyEnabled Boolean   @default(false)
+  workerStatus     String    @default("STOPPED")
+  lastDiscoveryRun DateTime?
+  nextDiscoveryRun DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model WorkerJob {
+  id        Int      @id @default(autoincrement())
+  queueName String
+  jobId     String
+  state     String
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([queueName, jobId])
+}
+
+model DeadLetter {
+  id           Int      @id @default(autoincrement())
+  jobId        String
+  queueName    String
+  error        String
+  attemptCount Int
+  stackTrace   String?
+  timestamp    DateTime @default(now())
 }

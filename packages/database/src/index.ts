@@ -18,3 +18,5 @@ declare global {
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 if (env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;
+export * from '@prisma/client';
+export * from '@prisma/client';

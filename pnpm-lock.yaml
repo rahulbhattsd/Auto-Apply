@@ -262,6 +262,40 @@ importers:
         specifier: ^8.0.0
         version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
 
+  packages/application-engine:
+    dependencies:
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../database
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.5
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.5(jiti@1.21.7)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
   packages/config:
     dependencies:
       dotenv:
@@ -441,9 +475,15 @@ importers:
 
   workers/analysis-worker:
     dependencies:
+      '@autoapply/application-engine':
+        specifier: workspace:*
+        version: link:../../packages/application-engine
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -478,6 +518,9 @@ importers:
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -512,6 +555,9 @@ importers:
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -543,9 +589,15 @@ importers:
 
   workers/resume-worker:
     dependencies:
+      '@autoapply/application-engine':
+        specifier: workspace:*
+        version: link:../../packages/application-engine
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -580,6 +632,9 @@ importers:
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
