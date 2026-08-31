@@ -14,7 +14,11 @@ fastify.addHook('onResponse', (request, reply, done) => { request.log.info({ req
 
 fastify.register(cors, { origin: env.APP_URL, credentials: true });
 
-fastify.get('/api/health', async (_request, reply) => { return reply.send({ status: 'ok' }); });
+fastify.get('/api/health', async (_request, reply) => {
+  const workerHealth = await import("@autoapply/queue").then(q => q.checkWorkerHealth());
+  if (!workerHealth) return reply.status(503).send({ status: "error", workers: "down" });
+  return reply.send({ status: 'ok' });
+});
 fastify.get('/api/ready', async (_request, reply) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -26,7 +30,12 @@ fastify.get('/api/ready', async (_request, reply) => {
   }
 });
 
+import automationRoutes from "./automation.js";
+import { startScheduler } from "./scheduler.js";
+
 const start = async () => {
+  await fastify.register(automationRoutes);
+  startScheduler();
   try {
     const port = env.API_URL ? parseInt(new URL(env.API_URL).port) || 3000 : 3000;
     await fastify.listen({ port, host: '0.0.0.0' });
