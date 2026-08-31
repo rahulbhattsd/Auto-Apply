@@ -10,10 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@autoapply/ai-analysis": "workspace:^",
+    "@autoapply/application-engine": "workspace:*",
     "@autoapply/config": "workspace:*",
-    "@autoapply/queue": "workspace:*",
     "@autoapply/database": "workspace:*",
-    "@autoapply/application-engine": "workspace:*"
+    "@autoapply/queue": "workspace:*"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

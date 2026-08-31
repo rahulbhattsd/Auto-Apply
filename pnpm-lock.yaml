@@ -589,6 +589,9 @@ importers:
 
   workers/resume-worker:
     dependencies:
+      '@autoapply/ai-analysis':
+        specifier: workspace:^
+        version: link:../../packages/ai-analysis
       '@autoapply/application-engine':
         specifier: workspace:*
         version: link:../../packages/application-engine

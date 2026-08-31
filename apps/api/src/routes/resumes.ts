@@ -52,6 +52,14 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
     try {
       const resume = await prisma.resume.findFirst({
         where: { id: parseInt(id, 10), userId },
+        include: {
+            derivedVersions: {
+                include: {
+                    job: true,
+                    application: true,
+                }
+            }
+        }
       });
 
       if (!resume) {
@@ -59,6 +67,55 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       }
 
       return reply.send(resume);
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  fastify.get('/application/:applicationId/versions', async (request, reply) => {
+    const userId = request.user!.id;
+    const { applicationId } = request.params as { applicationId: string };
+
+    try {
+      const app = await prisma.application.findFirst({
+        where: { id: parseInt(applicationId, 10), candidate: { userId } }
+      });
+
+      if (!app) {
+         return reply.status(404).send({ error: 'Application not found' });
+      }
+
+      const versions = await prisma.resumeVersion.findMany({
+        where: { applicationId: parseInt(applicationId, 10) },
+        orderBy: { version: 'desc' }
+      });
+
+      return reply.send({ versions });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  fastify.get('/diff/:versionId', async (request, reply) => {
+    const userId = request.user!.id;
+    const { versionId } = request.params as { versionId: string };
+
+    try {
+       const tailoredResume = await prisma.resumeVersion.findFirst({
+           where: { id: parseInt(versionId, 10), candidate: { userId } },
+           include: { basedOnMasterResume: true }
+       });
+
+       if (!tailoredResume) {
+           return reply.status(404).send({ error: 'Tailored resume version not found' });
+       }
+
+       return reply.send({
+           tailored: tailoredResume,
+           master: tailoredResume.basedOnMasterResume
+       });
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ error: 'Internal server error' });

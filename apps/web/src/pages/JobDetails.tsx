@@ -13,11 +13,27 @@ export default function JobDetails() {
     }
   });
 
+  const { data: versionsResponse, isLoading: versionsLoading } = useQuery({
+    queryKey: ['job-versions', id],
+    queryFn: async () => {
+      const jobRes = await fetch(`/api/jobs/${id}`);
+      const jobData = await jobRes.json();
+      const appId = jobData.job?.applications?.[0]?.id;
+      if (!appId) return { versions: [] };
+
+      const res = await fetch(`/api/resumes/application/${appId}/versions`);
+      if (!res.ok) throw new Error('Failed to fetch resume versions');
+      return res.json();
+    }
+  });
+
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (!response?.job) return <div className="p-8">Job not found</div>;
 
   const { job } = response;
   const analysis = job.analysis;
+
+  const latestVersion = versionsResponse?.versions?.[0];
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -29,7 +45,7 @@ export default function JobDetails() {
         <a href={job.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View Original Posting</a>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-6 mb-6">
         <div className="bg-white shadow rounded p-6">
           <h2 className="text-xl font-bold mb-4">Analysis Results</h2>
           <div className="mb-4">
@@ -71,6 +87,33 @@ export default function JobDetails() {
           </div>
         </div>
       </div>
+
+      {versionsLoading ? (
+         <div className="p-8">Loading tailored artifacts...</div>
+      ) : latestVersion ? (
+         <div className="bg-white shadow rounded p-6 mb-6">
+           <h2 className="text-xl font-bold mb-4 text-purple-700">Tailored Artifacts (Version {latestVersion.version})</h2>
+           <p className="text-sm text-gray-500 mb-6 italic">These artifacts are uniquely generated for this application and do not alter your master profile.</p>
+
+           <div className="mb-8">
+             <h3 className="font-bold mb-2">Generated Cover Letter</h3>
+             <div className="bg-gray-50 p-4 rounded whitespace-pre-wrap text-sm font-serif">
+               {latestVersion.coverLetter || 'No cover letter generated.'}
+             </div>
+           </div>
+
+           <div>
+             <h3 className="font-bold mb-2">Tailored Resume Content</h3>
+             <pre className="bg-gray-800 text-gray-100 p-4 rounded overflow-auto text-xs">
+               {JSON.stringify(latestVersion.content, null, 2)}
+             </pre>
+           </div>
+         </div>
+      ) : (
+         <div className="bg-white shadow rounded p-6 mb-6 text-gray-500 italic">
+           No tailored resume versions generated for this job yet.
+         </div>
+      )}
     </div>
   );
 }
