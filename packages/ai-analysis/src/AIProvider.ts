@@ -26,7 +26,23 @@ export interface JobData {
   skills: string[];
 }
 
+export interface ResumeInput {
+  candidate: CandidateData;
+  job: JobData;
+}
+
+export interface TailoredResume {
+  content: Record<string, unknown>;
+}
+
+export interface CoverLetterInput {
+  candidate: CandidateData;
+  job: JobData;
+}
+
 export interface AIProvider {
   name: string;
   analyzeJob(candidate: CandidateData, job: JobData): Promise<AIAnalysisResult>;
+  tailorResume(input: ResumeInput): Promise<TailoredResume>;
+  generateCoverLetter(input: CoverLetterInput): Promise<string>;
 }

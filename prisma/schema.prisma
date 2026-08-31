@@ -20,6 +20,7 @@ model User {
 }
 
 model CandidateProfile {
+  resumeVersions     ResumeVersion[]
   id                 Int      @id @default(autoincrement())
   userId             Int      @unique
   user               User     @relation(fields: [userId], references: [id])
@@ -46,6 +47,7 @@ model CandidateProfile {
 }
 
 model Resume {
+  derivedVersions ResumeVersion[]
   id        Int      @id @default(autoincrement())
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
@@ -89,6 +91,7 @@ model Company {
 }
 
 model Job {
+  resumeVersions       ResumeVersion[]
   id                   Int          @id @default(autoincrement())
   externalId           String
   sourceId             Int
@@ -149,6 +152,7 @@ enum ApplicationStatus {
 }
 
 model Application {
+  resumeVersions ResumeVersion[]
   id             Int               @id @default(autoincrement())
   candidateId    Int
   candidate      CandidateProfile  @relation(fields: [candidateId], references: [id])
@@ -205,4 +209,22 @@ model DeadLetter {
   attemptCount Int
   stackTrace   String?
   timestamp    DateTime @default(now())
+}
+
+model ResumeVersion {
+  id                   Int               @id @default(autoincrement())
+  candidateId          Int
+  candidate            CandidateProfile  @relation(fields: [candidateId], references: [id])
+  jobId                Int
+  job                  Job               @relation(fields: [jobId], references: [id])
+  applicationId        Int
+  application          Application       @relation(fields: [applicationId], references: [id])
+  basedOnMasterResumeId Int
+  basedOnMasterResume  Resume            @relation(fields: [basedOnMasterResumeId], references: [id])
+  version              Int               @default(1)
+  content              Json
+  coverLetter          String?
+  createdAt            DateTime          @default(now())
+
+  @@unique([applicationId, version])
 }
