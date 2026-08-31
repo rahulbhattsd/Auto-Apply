@@ -65,3 +65,63 @@ model ApplicationPolicy {
   minimumMatchScore     Int?
   maxApplicationsPerDay Int?
 }
+
+model JobSource {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  config    Json?
+  jobs      Job[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  website     String?
+  description String?
+  jobs        Job[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Job {
+  id                   Int          @id @default(autoincrement())
+  externalId           String
+  sourceId             Int
+  source               JobSource    @relation(fields: [sourceId], references: [id])
+  title                String
+  companyId            Int?
+  company              Company?     @relation(fields: [companyId], references: [id])
+  location             String?
+  remoteType           String?
+  description          String
+  url                  String
+  employmentType       String?
+  salaryMin            Int?
+  salaryMax            Int?
+  currency             String?
+  postedAt             DateTime
+  skills               String[]
+  canonicalFingerprint String       @unique
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  analysis             JobAnalysis?
+
+  @@unique([sourceId, externalId])
+}
+
+model JobAnalysis {
+  id              Int      @id @default(autoincrement())
+  jobId           Int      @unique
+  job             Job      @relation(fields: [jobId], references: [id])
+  matchScore      Int
+  recommendation  String
+  skillsMatched   String[]
+  skillsMissing   String[]
+  experienceMatch String?
+  educationMatch  String?
+  locationMatch   String?
+  reasoning       String
+  createdAt       DateTime @default(now())
+}
