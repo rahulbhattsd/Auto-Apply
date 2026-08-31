@@ -8,6 +8,60 @@ generator client {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
+  id             Int                @id @default(autoincrement())
+  email          String             @unique
+  hashedPassword String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  profile        CandidateProfile?
+  resumes        Resume[]
+  policy         ApplicationPolicy?
+}
+
+model CandidateProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id])
+  name               String?
+  phone              String?
+  location           String?
+  linkedin           String?
+  github             String?
+  portfolio          String?
+  education          Json?
+  experience         Json?
+  skills             Json?
+  projects           Json?
+  certifications     Json?
+  preferredRoles     String[]
+  preferredLocations String[]
+  remotePreference   String?
+  minimumSalary      Int?
+  maximumSalary      Int?
+  employmentTypes    String[]
+  workAuthorization  String?
+  noticePeriod       String?
+}
+
+model Resume {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  fileName  String
+  fileUrl   String
+  isMaster  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ApplicationPolicy {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique
+  user                  User     @relation(fields: [userId], references: [id])
+  targetRoles           String[]
+  targetTechnologies    String[]
+  preferredCompanies    String[]
+  excludedCompanies     String[]
+  excludedKeywords      String[]
+  minimumMatchScore     Int?
+  maxApplicationsPerDay Int?
 }
