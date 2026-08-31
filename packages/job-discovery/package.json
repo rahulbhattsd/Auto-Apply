@@ -1,0 +1,30 @@
+{
+  "name": "@autoapply/job-discovery",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "type": "module"
+  },
+  "devDependencies": {
+    "@autoapply/eslint-config": "workspace:^",
+    "@autoapply/typescript-config": "workspace:*",
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "@autoapply/config": "workspace:*",
+    "@autoapply/database": "workspace:^",
+    "@autoapply/shared": "workspace:*",
+    "@prisma/client": "^5.18.0"
+  }
+}

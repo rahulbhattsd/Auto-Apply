@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
 import policyRoutes from './routes/policy';
 import resumesRoutes from './routes/resumes';
+import { jobRoutes } from './routes/jobs';
 
 export const buildApp = () => {
   const fastify = Fastify({
@@ -29,6 +30,7 @@ export const buildApp = () => {
   fastify.register(profileRoutes, { prefix: '/api/profile' });
   fastify.register(policyRoutes, { prefix: '/api/policy' });
   fastify.register(resumesRoutes, { prefix: '/api/resumes' });
+  fastify.register(jobRoutes, { prefix: '/api' });
 
   return fastify;
 };
