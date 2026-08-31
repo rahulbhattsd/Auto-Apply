@@ -1,0 +1,26 @@
+{
+  "name": "autoapply",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AutoApply - Autonomous AI Job Application Platform",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "prisma": "5.18.0",
+    "tsx": "^4.0.0",
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "@prisma/client": "5.18.0"
+  }
+}
