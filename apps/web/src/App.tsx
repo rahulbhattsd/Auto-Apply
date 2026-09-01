@@ -5,6 +5,10 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import JobsList from './pages/JobsList';
 import JobDetails from './pages/JobDetails';
+import ApplicationsList from './pages/ApplicationsList';
+import ApplicationDetails from './pages/ApplicationDetails';
+import HumanActionCenter from './pages/HumanActionCenter';
+import Analytics from './pages/Analytics';
 
 const queryClient = new QueryClient();
 
@@ -19,6 +23,10 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/jobs" element={<JobsList />} />
           <Route path="/jobs/:id" element={<JobDetails />} />
+          <Route path="/applications" element={<ApplicationsList />} />
+          <Route path="/applications/:id" element={<ApplicationDetails />} />
+          <Route path="/human-actions" element={<HumanActionCenter />} />
+          <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

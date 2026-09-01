@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <button class="postings-btn">Apply for this job</button>
+    <form id="application_form" style="display:none;">
+        <input type="text" name="name" id="name" />
+        <input type="text" name="email" id="email" />
+        <input type="text" name="phone" id="phone" />
+        <input type="text" name="urls[LinkedIn]" id="linkedin" />
+        <input type="file" name="resume" id="resume" />
+        <button type="submit" class="postings-btn">Submit Application</button>
+    </form>
+    <script>
+        document.querySelector('.postings-btn').addEventListener('click', function(e) {
+            document.getElementById('application_form').style.display = 'block';
+        });
+        document.getElementById('application_form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.body.innerHTML = '<h1>Application submitted</h1><p>Thank you.</p>';
+        });
+    </script>
+</body>
+</html>

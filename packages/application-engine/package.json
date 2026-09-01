@@ -11,8 +11,10 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:*",
-    "@autoapply/config": "workspace:*"
+    "@autoapply/queue": "workspace:*",
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

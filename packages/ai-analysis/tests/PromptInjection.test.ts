@@ -15,11 +15,11 @@ describe('GroqProvider Prompt Injection Defense', () => {
 
     const provider = new GroqProvider();
 
-    let providedMessages: any[] = [];
+    let providedMessages: unknown[] = [];
     (provider as any).client = {
       chat: {
         completions: {
-          create: async (params: any) => {
+          create: async (params: unknown) => {
             providedMessages = params.messages;
             // Simulate the LLM obeying the system prompt despite injection
             return {

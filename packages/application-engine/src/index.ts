@@ -1,4 +1,7 @@
 import { prisma, ApplicationStatus } from '@autoapply/database';
+import { Queue, QUEUE_NAMES, connection } from '@autoapply/queue';
+import Redis from 'ioredis';
+import { env } from '@autoapply/config';
 
 export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
   DISCOVERED: ['ANALYZING', 'REJECTED'],
@@ -18,6 +21,10 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
   CANCELLED: [],
 };
 
+const notificationQueue = new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection });
+// @ts-expect-error valid injection
+const publisher = new Redis(env.REDIS_URL);
+
 export async function transitionApplication(
   applicationId: number,
   toState: ApplicationStatus,
@@ -26,6 +33,14 @@ export async function transitionApplication(
   return await prisma.$transaction(async (tx) => {
     const app = await tx.application.findUnique({
       where: { id: applicationId },
+      include: {
+        candidate: {
+          include: { user: true }
+        },
+        job: {
+          include: { company: true }
+        }
+      }
     });
 
     if (!app) {
@@ -46,7 +61,7 @@ export async function transitionApplication(
       data: { status: toState },
     });
 
-    await tx.applicationEvent.create({
+    const event = await tx.applicationEvent.create({
       data: {
         applicationId,
         jobId: app.jobId,
@@ -54,6 +69,37 @@ export async function transitionApplication(
         payload: metadata ? (metadata as never) : {},
       },
     });
+
+    // Notification logic
+    const companyName = app.job.company?.name || 'Unknown Company';
+    const roleName = app.job.title;
+
+    if (toState === 'VERIFIED') {
+      await notificationQueue.add('notify', {
+        type: 'VERIFIED',
+        recipient: app.candidate.user.email,
+        subject: `Application Verified: ${roleName} at ${companyName}`,
+        message: `Great news! Your application for ${roleName} at ${companyName} has been successfully submitted and verified.`,
+        relatedApplicationId: applicationId,
+        metadata,
+      });
+    } else if (toState === 'NEEDS_HUMAN') {
+      await notificationQueue.add('notify', {
+        type: 'NEEDS_HUMAN',
+        recipient: app.candidate.user.email,
+        subject: `Action Required: Application for ${roleName} at ${companyName}`,
+        message: `Your application for ${roleName} at ${companyName} requires human intervention (e.g., CAPTCHA or missing info). Please visit the Human Action Center in your dashboard to continue.`,
+        relatedApplicationId: applicationId,
+        metadata,
+      });
+    }
+
+    // Real-time propagation
+    await publisher.publish('application-events', JSON.stringify({
+      applicationId,
+      toState,
+      event,
+    }));
 
     return updatedApp;
   });
