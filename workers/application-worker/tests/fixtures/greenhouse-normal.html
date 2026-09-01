@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <form id="application_form">
+        <input type="text" name="first_name" id="first_name" />
+        <input type="text" name="last_name" id="last_name" />
+        <input type="text" name="email" id="email" />
+        <input type="text" name="phone" id="phone" />
+        <input type="file" name="resume" id="resume" />
+        <input type="submit" id="submit_app" value="Submit Application" />
+    </form>
+    <script>
+        document.getElementById('application_form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.body.innerHTML = '<h1>Thank you</h1><div class="application-success">Submitted</div>';
+        });
+    </script>
+</body>
+</html>

@@ -163,6 +163,7 @@ model Application {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   events         ApplicationEvent[]
+  notifications  Notification[]
 
   @@unique([candidateId, canonicalJobId])
 }
@@ -227,4 +228,15 @@ model ResumeVersion {
   createdAt            DateTime          @default(now())
 
   @@unique([applicationId, version])
+}
+
+model Notification {
+  id                   Int          @id @default(autoincrement())
+  type                 String
+  recipient            String
+  payload              Json?
+  relatedApplicationId Int?
+  application          Application? @relation(fields: [relatedApplicationId], references: [id])
+  sentAt               DateTime     @default(now())
+  readAt               DateTime?
 }

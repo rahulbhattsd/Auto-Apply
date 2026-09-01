@@ -6,11 +6,11 @@ describe('GroqProvider Cover Letter Generation', () => {
   it('should generate a grounded cover letter without instructions from job description taking over', async () => {
     const provider = new GroqProvider();
 
-    let providedMessages: any[] = [];
+    let providedMessages: unknown[] = [];
     (provider as any).client = {
       chat: {
         completions: {
-          create: async (params: any) => {
+          create: async (params: unknown) => {
             providedMessages = params.messages;
             return {
               choices: [{

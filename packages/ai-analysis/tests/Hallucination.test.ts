@@ -7,11 +7,11 @@ describe('GroqProvider Hallucination Defense - Resume Tailoring', () => {
     const provider = new GroqProvider();
 
     // Mock the external client
-    let providedMessages: any[] = [];
+    let providedMessages: unknown[] = [];
     (provider as any).client = {
       chat: {
         completions: {
-          create: async (params: any) => {
+          create: async (params: unknown) => {
             providedMessages = params.messages;
             return {
               choices: [{

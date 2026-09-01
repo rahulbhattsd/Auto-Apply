@@ -5,11 +5,15 @@ import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { env } from '@autoapply/config';
 
-import authRoutes from './routes/auth';
-import profileRoutes from './routes/profile';
-import policyRoutes from './routes/policy';
-import resumesRoutes from './routes/resumes';
-import { jobRoutes } from './routes/jobs';
+import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
+import policyRoutes from './routes/policy.js';
+import resumesRoutes from './routes/resumes.js';
+import { jobRoutes } from './routes/jobs.js';
+import eventsRoutes from './routes/events.js';
+import dashboardRoutes from './routes/dashboard.js';
+import applicationsRoutes from './routes/applications.js';
+import analyticsRoutes from './routes/analytics.js';
 
 export const buildApp = () => {
   const fastify = Fastify({
@@ -31,6 +35,10 @@ export const buildApp = () => {
   fastify.register(policyRoutes, { prefix: '/api/policy' });
   fastify.register(resumesRoutes, { prefix: '/api/resumes' });
   fastify.register(jobRoutes, { prefix: '/api' });
+  fastify.register(eventsRoutes);
+  fastify.register(dashboardRoutes);
+  fastify.register(applicationsRoutes);
+  fastify.register(analyticsRoutes);
 
   return fastify;
 };
