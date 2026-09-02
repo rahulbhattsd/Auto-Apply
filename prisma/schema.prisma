@@ -116,6 +116,8 @@ model Job {
   applications         Application[]
 
   @@unique([sourceId, externalId])
+  @@index([sourceId])
+  @@index([companyId])
 }
 
 model JobAnalysis {
@@ -131,6 +133,8 @@ model JobAnalysis {
   locationMatch   String?
   reasoning       String
   createdAt       DateTime @default(now())
+
+  @@index([matchScore])
 }
 
 enum ApplicationStatus {
@@ -166,6 +170,9 @@ model Application {
   notifications  Notification[]
 
   @@unique([candidateId, canonicalJobId])
+  @@index([candidateId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model ApplicationEvent {
@@ -239,4 +246,14 @@ model Notification {
   application          Application? @relation(fields: [relatedApplicationId], references: [id])
   sentAt               DateTime     @default(now())
   readAt               DateTime?
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  action     String
+  targetType String
+  targetId   Int
+  metadata   Json?
+  createdAt  DateTime @default(now())
 }

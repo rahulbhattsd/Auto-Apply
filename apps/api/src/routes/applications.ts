@@ -32,7 +32,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
         resumeVersions: { orderBy: { version: 'desc' }, take: 1 }
       }
     });
-    if (!application) return reply.status(404).send({ error: 'Application not found' });
+    if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found' } });
     return reply.send({ application });
   });
 
@@ -42,7 +42,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     const application = await prisma.application.findFirst({
       where: { id: parseInt(id, 10), candidateId: userId, status: 'NEEDS_HUMAN' }
     });
-    if (!application) return reply.status(404).send({ error: 'Application not found or not in NEEDS_HUMAN state' });
+    if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
     const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection });
     await applicationQueue.add('resume-application', { applicationId: application.id });
@@ -54,6 +54,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     await prisma.applicationEvent.create({
       data: { applicationId: application.id, jobId: application.jobId, eventType: 'APPLYING', payload: { reason: 'Resumed by human' } }
     });
+    await prisma.auditLog.create({ data: { userId, action: 'RESUME_APPLICATION', targetType: 'Application', targetId: application.id } });
     return reply.send({ success: true, application: updatedApp });
   });
 
@@ -63,7 +64,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     const application = await prisma.application.findFirst({
       where: { id: parseInt(id, 10), candidateId: userId }
     });
-    if (!application) return reply.status(404).send({ error: 'Application not found' });
+    if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found' } });
 
     const updatedApp = await prisma.application.update({
       where: { id: application.id },
@@ -72,6 +73,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     await prisma.applicationEvent.create({
       data: { applicationId: application.id, jobId: application.jobId, eventType: 'CANCELLED', payload: { reason: 'Cancelled by human' } }
     });
+    await prisma.auditLog.create({ data: { userId, action: 'CANCEL_APPLICATION', targetType: 'Application', targetId: application.id } });
     return reply.send({ success: true, application: updatedApp });
   });
 
@@ -81,7 +83,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     const application = await prisma.application.findFirst({
       where: { id: parseInt(id, 10), candidateId: userId, status: 'NEEDS_HUMAN' }
     });
-    if (!application) return reply.status(404).send({ error: 'Application not found or not in NEEDS_HUMAN state' });
+    if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
     const updatedApp = await prisma.application.update({
       where: { id: application.id },
@@ -90,6 +92,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     await prisma.applicationEvent.create({
       data: { applicationId: application.id, jobId: application.jobId, eventType: 'VERIFIED', payload: { reason: 'Manually marked completed by human' } }
     });
+    await prisma.auditLog.create({ data: { userId, action: 'MARK_COMPLETED_APPLICATION', targetType: 'Application', targetId: application.id } });
     return reply.send({ success: true, application: updatedApp });
   });
 }

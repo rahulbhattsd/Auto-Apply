@@ -21,12 +21,13 @@ export default async function policyRoutes(fastify: FastifyInstance) {
     try {
       const policy = await prisma.applicationPolicy.findUnique({ where: { userId } });
       if (!policy) {
-        return reply.status(404).send({ error: 'Policy not found' });
+        return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Policy not found' } });
       }
+
       return reply.send(policy);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -50,13 +51,14 @@ export default async function policyRoutes(fastify: FastifyInstance) {
         },
       });
 
+
       return reply.send(policy);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return reply.status(400).send({ error: 'Validation failed', details: error.errors });
+        return reply.status(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: error.errors } });
       }
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 }

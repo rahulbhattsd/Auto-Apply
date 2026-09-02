@@ -14,12 +14,16 @@ import eventsRoutes from './routes/events.js';
 import dashboardRoutes from './routes/dashboard.js';
 import applicationsRoutes from './routes/applications.js';
 import analyticsRoutes from './routes/analytics.js';
+import metricsRoutes from './routes/metrics.js';
 
 export const buildApp = () => {
   const fastify = Fastify({
-    logger: false,
+    logger: env.NODE_ENV === 'development' ? { level: 'debug', transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss Z', ignore: 'pid,hostname' } } } : { level: 'info' },
     disableRequestLogging: true,
   });
+
+  fastify.addHook('onRequest', (request, _reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, service: 'api' }, 'received request'); done(); });
+  fastify.addHook('onResponse', (request, reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, statusCode: reply.statusCode, responseTime: reply.elapsedTime, service: 'api' }, 'request completed'); done(); });
 
   fastify.register(cors, { origin: env.APP_URL, credentials: true });
   fastify.register(cookie, { secret: env.JWT_SECRET });
@@ -39,6 +43,7 @@ export const buildApp = () => {
   fastify.register(dashboardRoutes);
   fastify.register(applicationsRoutes);
   fastify.register(analyticsRoutes);
+  fastify.register(metricsRoutes);
 
   return fastify;
 };

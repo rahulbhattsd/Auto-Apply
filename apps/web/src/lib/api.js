@@ -1,5 +1,5 @@
 // Fallback just in case env is not injected properly by vite
-const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_URL;
 export const fetchApi = async (endpoint, options = {}) => {
     const isFormData = options.body instanceof FormData;
     const headers = new Headers(options.headers);

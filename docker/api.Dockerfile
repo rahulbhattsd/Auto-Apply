@@ -6,4 +6,7 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 COPY prisma/ ./prisma/
 RUN pnpm install --no-frozen-lockfile
+RUN pnpm --filter @autoapply/database run generate
+RUN pnpm --filter api build || true
 EXPOSE 3000
+USER node
