@@ -66,7 +66,7 @@ export async function jobRoutes(fastify: FastifyInstance) {
       return reply.send({ jobs });
     } catch (error) {
       request.log.error(error);
-      return reply.status(400).send({ error: 'Invalid query parameters' });
+      return reply.status(400).send({ success: false, error: { code: 'ERROR', message: 'Invalid query parameters' } });
     }
   });
 
@@ -84,7 +84,7 @@ export async function jobRoutes(fastify: FastifyInstance) {
     });
 
     if (!job) {
-      return reply.status(404).send({ error: 'Job not found' });
+      return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Job not found' } });
     }
 
     return reply.send({ job });
@@ -100,7 +100,7 @@ export async function jobRoutes(fastify: FastifyInstance) {
       });
 
       if (!profile) {
-        return reply.status(400).send({ error: 'Candidate profile required for job discovery' });
+        return reply.status(400).send({ success: false, error: { code: 'ERROR', message: 'Candidate profile required for job discovery' } });
       }
 
       // Initialize our mock source and services
@@ -134,7 +134,7 @@ export async function jobRoutes(fastify: FastifyInstance) {
       return reply.send({ success: true, processedJobIds: processedIds });
     } catch (error) {
       request.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error during discovery' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error during discovery' } });
     }
   });
 }

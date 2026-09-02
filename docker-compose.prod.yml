@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: autoapply
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autoapply"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter api start
+    restart: always
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    ports:
+      - "5173:5173"
+    env_file: .env
+    depends_on:
+      - api
+    command: pnpm run --filter web start
+    restart: always
+
+  discovery-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter discovery-worker start
+    restart: always
+
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter analysis-worker start
+    restart: always
+
+  resume-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter resume-worker start
+    restart: always
+
+  application-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter application-worker start
+    restart: always
+
+  verification-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run --filter verification-worker start
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+      - api
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -12,7 +12,7 @@ export default function ActivityFeed() {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const url = (import.meta as unknown as { env: { VITE_API_URL: string } }).env?.VITE_API_URL ? `${(import.meta as unknown as { env: { VITE_API_URL: string } }).env.VITE_API_URL}/events` : 'http://localhost:3000/api/events';
+    const url = `${(import.meta as unknown as { env: { VITE_API_URL: string } }).env.VITE_API_URL}/events`;
     const eventSource = new EventSource(url, { withCredentials: true });
 
     eventSource.onopen = () => setConnected(true);

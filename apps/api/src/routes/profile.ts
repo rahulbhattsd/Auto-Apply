@@ -33,12 +33,12 @@ export default async function profileRoutes(fastify: FastifyInstance) {
     try {
       const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
       if (!profile) {
-        return reply.status(404).send({ error: 'Profile not found' });
+        return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Profile not found' } });
       }
       return reply.send(profile);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -79,10 +79,10 @@ export default async function profileRoutes(fastify: FastifyInstance) {
       return reply.send(profile);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return reply.status(400).send({ error: 'Validation failed', details: error.errors });
+        return reply.status(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: error.errors } });
       }
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 }

@@ -4,7 +4,7 @@ export default function ActivityFeed() {
     const [events, setEvents] = useState([]);
     const [connected, setConnected] = useState(false);
     useEffect(() => {
-        const url = import.meta.env?.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/events` : 'http://localhost:3000/api/events';
+        const url = `${import.meta.env.VITE_API_URL}/events`;
         const eventSource = new EventSource(url, { withCredentials: true });
         eventSource.onopen = () => setConnected(true);
         eventSource.onerror = () => setConnected(false);

@@ -13,7 +13,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
     try {
       const data = await request.file();
       if (!data) {
-        return reply.status(400).send({ error: 'No file uploaded' });
+        return reply.status(400).send({ success: false, error: { code: 'ERROR', message: 'No file uploaded' } });
       }
 
       const { url, fileName } = await storageProvider.uploadFile(data, userId);
@@ -30,7 +30,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       return reply.status(201).send(resume);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -41,7 +41,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       return reply.send(resumes);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -63,13 +63,13 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       });
 
       if (!resume) {
-        return reply.status(404).send({ error: 'Resume not found' });
+        return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Resume not found' } });
       }
 
       return reply.send(resume);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -83,7 +83,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       });
 
       if (!app) {
-         return reply.status(404).send({ error: 'Application not found' });
+         return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found' } });
       }
 
       const versions = await prisma.resumeVersion.findMany({
@@ -94,7 +94,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
       return reply.send({ versions });
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 
@@ -109,7 +109,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
        });
 
        if (!tailoredResume) {
-           return reply.status(404).send({ error: 'Tailored resume version not found' });
+           return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Tailored resume version not found' } });
        }
 
        return reply.send({
@@ -118,7 +118,7 @@ export default async function resumesRoutes(fastify: FastifyInstance) {
        });
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
     }
   });
 }
