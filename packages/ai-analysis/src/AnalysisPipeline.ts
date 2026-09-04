@@ -1,6 +1,10 @@
 import { Job, CandidateProfile, ApplicationPolicy } from '@prisma/client';
 import { AIProvider } from './AIProvider';
 import { prisma } from '@autoapply/database';
+import { z } from 'zod';
+
+const candidateArraySchema = z.array(z.record(z.unknown())).nullable().optional();
+const skillsSchema = z.array(z.string()).catch([]);
 
 export class AnalysisPipeline {
   constructor(private aiProvider: AIProvider) {}
@@ -48,7 +52,7 @@ export class AnalysisPipeline {
   /**
    * Run the full pipeline for a job.
    */
-  async processJob(jobId: number, profileId: number): Promise<void> {
+  async processJob(jobId: number, profileId: number) {
     const job = await prisma.job.findUnique({ where: { id: jobId }, include: { company: true } });
     if (!job) throw new Error('Job not found');
 
@@ -61,59 +65,52 @@ export class AnalysisPipeline {
     const rejectionReason = await this.runDeterministicFilter(job, profile, policy);
 
     if (rejectionReason) {
-      await prisma.jobAnalysis.create({
-        data: {
+      return prisma.jobAnalysis.upsert({
+        where: { jobId: job.id },
+        update: {
+          matchScore: 0,
+          recommendation: 'REJECT',
+          skillsMatched: [],
+          skillsMissing: [],
+          reasoning: `Deterministic Filter: ${rejectionReason}`,
+        },
+        create: {
           jobId: job.id,
           matchScore: 0,
           recommendation: 'REJECT',
+          skillsMatched: [],
+          skillsMissing: [],
           reasoning: `Deterministic Filter: ${rejectionReason}`,
         }
       });
-      return; // Stop here, no LLM call
     }
 
     // Stage 2: AI Analysis
-    try {
-      const result = await this.aiProvider.analyzeJob(
-        {
-          skills: (profile.skills as string[]) || [],
-          experience: profile.experience,
-          education: profile.education,
-          preferredRoles: profile.preferredRoles,
-          preferredLocations: profile.preferredLocations,
-        },
-        {
-          title: job.title,
-          company: job.company?.name || 'Unknown',
-          description: job.description,
-          location: job.location,
-          remoteType: job.remoteType,
-          skills: job.skills,
-        }
-      );
+    const result = await this.aiProvider.analyzeJob(
+      {
+        skills: skillsSchema.parse(profile.skills),
+        experience: candidateArraySchema.parse(profile.experience) ?? [],
+        education: candidateArraySchema.parse(profile.education) ?? [],
+        preferredRoles: profile.preferredRoles,
+        preferredLocations: profile.preferredLocations,
+      },
+      {
+        title: job.title,
+        company: job.company?.name || 'Unknown',
+        description: job.description,
+        location: job.location,
+        remoteType: job.remoteType,
+        skills: job.skills,
+      }
+    );
 
-      await prisma.jobAnalysis.create({
-        data: {
-          jobId: job.id,
-          matchScore: result.matchScore,
-          recommendation: result.recommendation,
-          skillsMatched: result.skillsMatched,
-          skillsMissing: result.skillsMissing,
-          experienceMatch: result.experienceMatch,
-          educationMatch: result.educationMatch,
-          locationMatch: result.locationMatch,
-          reasoning: result.reasoning,
-        }
-      });
-    } catch (error) {
-      await prisma.jobAnalysis.create({
-        data: {
-          jobId: job.id,
-          matchScore: 0,
-          recommendation: 'AI_ANALYSIS_FAILED',
-          reasoning: error instanceof Error ? error.message : 'Unknown error during AI analysis',
-        }
-      });
-    }
+    return prisma.jobAnalysis.upsert({
+      where: { jobId: job.id },
+      update: result,
+      create: {
+        jobId: job.id,
+        ...result,
+      }
+    });
   }
 }

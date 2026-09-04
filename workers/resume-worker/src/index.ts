@@ -1,6 +1,6 @@
-import { Worker, QUEUE_NAMES, connection, Queue } from '@autoapply/queue';
+import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES } from '@autoapply/queue';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
-import { prisma } from '@autoapply/database';
+import { prisma, recordDeadLetter } from '@autoapply/database';
 import { GroqProvider } from '@autoapply/ai-analysis';
 
 const aiProvider = new GroqProvider();
@@ -132,7 +132,10 @@ const worker = new Worker(
       version: nextVersion
     });
 
-    await applicationQueue.add('submit-application', { applicationId });
+    await applicationQueue.add('submit-application', { applicationId }, {
+      attempts: RETRY_POLICIES.BROWSER_ERROR.attempts,
+      backoff: RETRY_POLICIES.BROWSER_ERROR.backoff,
+    });
 
     console.log(`[ResumeWorker] Application ${applicationId} transitioned to READY_TO_APPLY with tailored resume version ${nextVersion}.`);
   },
@@ -155,14 +158,12 @@ worker.on('failed', async (job, err) => {
             console.error(`[ResumeWorker] Failed to transition application ${applicationId} to FAILED:`, tErr);
         }
 
-        await prisma.deadLetter.create({
-            data: {
-                jobId: job.id!,
-                queueName: QUEUE_NAMES.RESUME_GENERATION,
-                error: err.message,
-                attemptCount: job.attemptsMade,
-                stackTrace: err.stack || null
-            }
+        await recordDeadLetter({
+          jobId: job.id!,
+          queueName: QUEUE_NAMES.RESUME_GENERATION,
+          error: err.message,
+          attemptCount: job.attemptsMade,
+          stackTrace: err.stack || null,
         });
     }
   }

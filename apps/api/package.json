@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@autoapply/ai-analysis": "workspace:*",
+    "@autoapply/application-engine": "workspace:*",
     "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:*",
     "@autoapply/job-discovery": "workspace:*",

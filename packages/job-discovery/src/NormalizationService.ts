@@ -26,39 +26,25 @@ export class NormalizationService {
   async normalizeAndPersist(jobResult: JobResult, sourceConfig: JobSource): Promise<Job> {
     const fingerprint = this.generateFingerprint(jobResult);
 
-    // Check for existing fingerprint
-    const existing = await prisma.job.findUnique({
-      where: { canonicalFingerprint: fingerprint }
-    });
-
-    if (existing) {
-      // If it exists, link/skip rather than duplicate. We return the existing job.
-      return existing;
-    }
-
     // Ensure JobSource exists
-    let source = await prisma.jobSource.findUnique({
-      where: { name: sourceConfig.name }
+    const source = await prisma.jobSource.upsert({
+      where: { name: sourceConfig.name },
+      update: {},
+      create: { name: sourceConfig.name },
     });
-    if (!source) {
-      source = await prisma.jobSource.create({
-        data: { name: sourceConfig.name }
-      });
-    }
 
     // Ensure Company exists
-    let company = await prisma.company.findUnique({
-      where: { name: jobResult.company }
+    const company = await prisma.company.upsert({
+      where: { name: jobResult.company },
+      update: {},
+      create: { name: jobResult.company },
     });
-    if (!company) {
-      company = await prisma.company.create({
-        data: { name: jobResult.company }
-      });
-    }
 
     // Insert new normalized job
-    const newJob = await prisma.job.create({
-      data: {
+    const newJob = await prisma.job.upsert({
+      where: { canonicalFingerprint: fingerprint },
+      update: {},
+      create: {
         externalId: jobResult.externalId,
         sourceId: source.id,
         title: jobResult.title,

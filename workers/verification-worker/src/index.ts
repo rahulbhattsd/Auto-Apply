@@ -1,5 +1,5 @@
 import { Worker, QUEUE_NAMES, connection } from '@autoapply/queue';
-import { prisma } from '@autoapply/database';
+import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 
 const worker = new Worker(
@@ -8,7 +8,10 @@ const worker = new Worker(
     const applicationId = Number(job.data.applicationId);
     console.log(`[VerificationWorker] Verifying application ${applicationId} from job ${job.id}`);
 
-    const application = await prisma.application.findUnique({ where: { id: applicationId } });
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: { events: { where: { eventType: 'SUBMITTED' }, orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
     if (!application) {
       throw new Error(`Application ${applicationId} not found`);
     }
@@ -19,22 +22,29 @@ const worker = new Worker(
       throw new Error(`Application ${applicationId} is not submitted; current status is ${application.status}`);
     }
 
-    await transitionApplication(application.id, 'VERIFIED', {
-      verification: 'submission_recorded',
-    });
+    const payload = application.events[0]?.payload as { submissionEvidence?: Record<string, unknown> } | null;
+    const evidence = payload?.submissionEvidence;
+    const hasEvidence = Boolean(
+      evidence?.['confirmationUrl'] || evidence?.['confirmationText'] || evidence?.['referenceId']
+    );
+
+    if (!hasEvidence) {
+      await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: 'VERIFICATION_EVIDENCE_MISSING' });
+      return;
+    }
+
+    await transitionApplication(application.id, 'VERIFIED', { verification: 'confirmed_submission_evidence', evidence });
   },
   { connection }
 );
 worker.on('failed', async (job, err) => {
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
-        await prisma.deadLetter.create({
-            data: {
-                jobId: job.id!,
-                queueName: QUEUE_NAMES.VERIFICATION,
-                error: err.message,
-                attemptCount: job.attemptsMade,
-                stackTrace: err.stack || null
-            }
+        await recordDeadLetter({
+          jobId: job.id!,
+          queueName: QUEUE_NAMES.VERIFICATION,
+          error: err.message,
+          attemptCount: job.attemptsMade,
+          stackTrace: err.stack || null,
         });
     }
 });

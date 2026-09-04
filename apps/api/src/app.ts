@@ -30,6 +30,23 @@ export const buildApp = () => {
   });
 
   fastify.addHook('onRequest', (request, _reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, service: 'api' }, 'received request'); done(); });
+  fastify.addHook('onRequest', (request, reply, done) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(request.method) || !request.url.startsWith('/api')) return done();
+    const origin = request.headers.origin;
+    const referer = request.headers.referer;
+    let source = origin;
+    try {
+      source ||= referer ? new URL(referer).origin : undefined;
+    } catch {
+      reply.status(403).send({ success: false, error: { code: 'CSRF_ORIGIN_DENIED', message: 'Origin not allowed' } });
+      return;
+    }
+    if (source && !allowedOrigins.includes(source)) {
+      reply.status(403).send({ success: false, error: { code: 'CSRF_ORIGIN_DENIED', message: 'Origin not allowed' } });
+      return;
+    }
+    done();
+  });
   fastify.addHook('onResponse', (request, reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, statusCode: reply.statusCode, responseTime: reply.elapsedTime, service: 'api' }, 'request completed'); done(); });
 
   fastify.register(cors, { origin: allowedOrigins, credentials: true });

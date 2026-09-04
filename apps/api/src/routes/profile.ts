@@ -3,6 +3,36 @@ import { z } from 'zod';
 import { prisma } from '@autoapply/database';
 import { verifyToken } from '../middleware/auth';
 
+const text = z.string().trim().min(1);
+const educationSchema = z.array(z.object({
+  institution: text,
+  degree: text.optional(),
+  field: text.optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+}).passthrough());
+const experienceSchema = z.array(z.object({
+  company: text,
+  role: text,
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  description: z.string().optional(),
+  achievements: z.array(z.string()).optional(),
+  technologies: z.array(z.string()).optional(),
+}).passthrough());
+const projectSchema = z.array(z.object({
+  name: text,
+  description: z.string().optional(),
+  technologies: z.array(z.string()).optional(),
+  url: z.string().url().optional(),
+}).passthrough());
+const certificationSchema = z.array(z.object({
+  name: text,
+  issuer: text.optional(),
+  issuedAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+}).passthrough());
+
 const profileSchema = z.object({
   name: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
@@ -10,11 +40,11 @@ const profileSchema = z.object({
   linkedin: z.string().nullable().optional(),
   github: z.string().nullable().optional(),
   portfolio: z.string().nullable().optional(),
-  education: z.any().optional(),
-  experience: z.any().optional(),
-  skills: z.any().optional(),
-  projects: z.any().optional(),
-  certifications: z.any().optional(),
+  education: educationSchema.nullable().optional(),
+  experience: experienceSchema.nullable().optional(),
+  skills: z.array(z.string().trim().min(1)).nullable().optional(),
+  projects: projectSchema.nullable().optional(),
+  certifications: certificationSchema.nullable().optional(),
   preferredRoles: z.array(z.string()).optional().default([]),
   preferredLocations: z.array(z.string()).optional().default([]),
   remotePreference: z.string().nullable().optional(),

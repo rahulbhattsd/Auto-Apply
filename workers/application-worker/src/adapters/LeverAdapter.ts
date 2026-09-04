@@ -1,4 +1,4 @@
-import { ApplicationAdapter } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
 import type { Page } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -65,19 +65,38 @@ export class LeverAdapter implements ApplicationAdapter {
     if (fileInput) {
         await fileInput.setInputFiles(resumePath);
     }
+
+    await this.assertNoUnknownRequiredFields(browserPage);
   }
 
-  async submit(page: unknown): Promise<boolean> {
+  async submit(page: unknown): Promise<SubmissionResult> {
     const browserPage = page as Page;
     await browserPage.click('button[type="submit"].postings-btn');
 
     try {
         await browserPage.waitForURL('**/thanks', { timeout: 3000 });
-        return true;
+        return { confirmed: true, evidence: { confirmationUrl: browserPage.url() } };
     } catch {
         await browserPage.waitForTimeout(500);
         const text = await browserPage.textContent('body');
-        return text?.includes('Application submitted') || text?.includes('Thank you') || false;
+        const confirmed = text?.includes('Application submitted') || text?.includes('Thank you') || false;
+        return confirmed
+          ? { confirmed: true, evidence: { confirmationUrl: browserPage.url(), confirmationText: text ?? undefined } }
+          : { confirmed: false };
+    }
+  }
+
+  private async assertNoUnknownRequiredFields(page: Page) {
+    const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
+      elements
+        .filter((element) => {
+          const input = element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+          return input.type !== 'hidden' && !input.value;
+        })
+        .map((element) => (element.getAttribute('name') || element.id || element.getAttribute('aria-label') || 'unknown'))
+    );
+    if (missing.length > 0) {
+      throw new Error(`UNKNOWN_REQUIRED_FIELD:${missing.join(',')}`);
     }
   }
 }

@@ -2,11 +2,13 @@ import { env } from '@autoapply/config';
 import { prisma } from '@autoapply/database';
 import { connection as redisConnection } from '@autoapply/queue';
 import automationRoutes from "./automation.js";
-import { startScheduler } from "./scheduler.js";
+import { startScheduler, stopScheduler } from "./scheduler.js";
 import { buildApp } from "./app.js";
 
+let app: ReturnType<typeof buildApp> | undefined;
+
 const start = async () => {
-  const app = buildApp();
+  app = buildApp();
   await app.register(automationRoutes);
 
   app.get('/api/health', async (_request, reply) => {
@@ -23,7 +25,7 @@ const start = async () => {
     }
   });
 
-  startScheduler();
+  await startScheduler();
   try {
     await app.listen({ port: env.PORT, host: env.HOST });
     app.log.info(`API server is running at http://${env.HOST}:${env.PORT}`);
@@ -33,6 +35,8 @@ start();
 
 const shutdown = async (signal: NodeJS.Signals) => {
   try {
+    stopScheduler();
+    await app?.close();
     await redisConnection.quit();
     await prisma.$disconnect();
     process.exit(0);

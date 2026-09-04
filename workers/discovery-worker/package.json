@@ -12,7 +12,8 @@
   "dependencies": {
     "@autoapply/config": "workspace:*",
     "@autoapply/queue": "workspace:*",
-    "@autoapply/database": "workspace:*"
+    "@autoapply/database": "workspace:*",
+    "@autoapply/job-discovery": "workspace:*"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

@@ -1,5 +1,5 @@
 import { Worker, QUEUE_NAMES, connection } from '@autoapply/queue';
-import { prisma } from '@autoapply/database';
+import { prisma, recordDeadLetter } from '@autoapply/database';
 import { EmailNotificationProvider, NotificationPayload } from '@autoapply/shared';
 
 const provider = new EmailNotificationProvider();
@@ -34,14 +34,12 @@ const worker = new Worker(
 
 worker.on('failed', async (job, err) => {
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
-    await prisma.deadLetter.create({
-      data: {
-        jobId: job.id!,
-        queueName: QUEUE_NAMES.NOTIFICATIONS,
-        error: err.message,
-        attemptCount: job.attemptsMade,
-        stackTrace: err.stack || null
-      }
+    await recordDeadLetter({
+      jobId: job.id!,
+      queueName: QUEUE_NAMES.NOTIFICATIONS,
+      error: err.message,
+      attemptCount: job.attemptsMade,
+      stackTrace: err.stack || null,
     });
   }
 });

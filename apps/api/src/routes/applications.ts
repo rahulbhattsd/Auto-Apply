@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
-import { Queue, QUEUE_NAMES, connection } from '@autoapply/queue';
+import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
+import { transitionApplication } from '@autoapply/application-engine';
 import { verifyToken } from '../middleware/auth';
 
 export default async function applicationsRoutes(fastify: FastifyInstance) {
@@ -43,17 +44,12 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
     const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection });
-    await applicationQueue.add('resume-application', { applicationId: application.id });
-
-    const updatedApp = await prisma.application.update({
-      where: { id: application.id },
-      data: { status: 'APPLYING' }
-    });
-    await prisma.applicationEvent.create({
-      data: { applicationId: application.id, jobId: application.jobId, eventType: 'APPLYING', payload: { reason: 'Resumed by human' } }
+    await applicationQueue.add('resume-application', { applicationId: application.id }, {
+      attempts: RETRY_POLICIES.BROWSER_ERROR.attempts,
+      backoff: RETRY_POLICIES.BROWSER_ERROR.backoff,
     });
     await prisma.auditLog.create({ data: { userId, action: 'RESUME_APPLICATION', targetType: 'Application', targetId: application.id } });
-    return reply.send({ success: true, application: updatedApp });
+    return reply.send({ success: true, application });
   });
 
   fastify.post('/api/applications/:id/cancel', async (request, reply) => {
@@ -64,13 +60,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found' } });
 
-    const updatedApp = await prisma.application.update({
-      where: { id: application.id },
-      data: { status: 'CANCELLED' }
-    });
-    await prisma.applicationEvent.create({
-      data: { applicationId: application.id, jobId: application.jobId, eventType: 'CANCELLED', payload: { reason: 'Cancelled by human' } }
-    });
+    const updatedApp = await transitionApplication(application.id, 'CANCELLED', { reason: 'Cancelled by human' });
     await prisma.auditLog.create({ data: { userId, action: 'CANCEL_APPLICATION', targetType: 'Application', targetId: application.id } });
     return reply.send({ success: true, application: updatedApp });
   });
@@ -83,13 +73,10 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
-    const updatedApp = await prisma.application.update({
-      where: { id: application.id },
-      data: { status: 'VERIFIED' }
-    });
-    await prisma.applicationEvent.create({
-      data: { applicationId: application.id, jobId: application.jobId, eventType: 'VERIFIED', payload: { reason: 'Manually marked completed by human' } }
-    });
+    await transitionApplication(application.id, 'APPLYING', { reason: 'Manually marked completed by human' });
+    await transitionApplication(application.id, 'SUBMITTED', { reason: 'Manually marked completed by human' });
+    await transitionApplication(application.id, 'VERIFYING', { reason: 'Manually marked completed by human' });
+    const updatedApp = await transitionApplication(application.id, 'VERIFIED', { reason: 'Manually marked completed by human' });
     await prisma.auditLog.create({ data: { userId, action: 'MARK_COMPLETED_APPLICATION', targetType: 'Application', targetId: application.id } });
     return reply.send({ success: true, application: updatedApp });
   });

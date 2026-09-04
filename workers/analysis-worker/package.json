@@ -13,7 +13,8 @@
     "@autoapply/config": "workspace:*",
     "@autoapply/queue": "workspace:*",
     "@autoapply/database": "workspace:*",
-    "@autoapply/application-engine": "workspace:*"
+    "@autoapply/application-engine": "workspace:*",
+    "@autoapply/ai-analysis": "workspace:*"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

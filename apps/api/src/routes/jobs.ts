@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { verifyToken } from '../middleware/auth';
 import { prisma } from '@autoapply/database';
 import { Prisma } from '@prisma/client';
-import { MockJobSource, NormalizationService } from '@autoapply/job-discovery';
-import { GroqProvider, AnalysisPipeline } from '@autoapply/ai-analysis';
+import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
 
 const QuerySchema = z.object({
   score: z.string().optional(),
@@ -103,35 +102,14 @@ export async function jobRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, error: { code: 'ERROR', message: 'Candidate profile required for job discovery' } });
       }
 
-      // Initialize our mock source and services
-      const source = new MockJobSource();
-      const normalizationSvc = new NormalizationService();
+      const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection });
+      await discoveryQueue.add('discover-jobs', { userId: request.user!.id }, {
+        jobId: `manual-discovery-${request.user!.id}-${Date.now()}`,
+        attempts: RETRY_POLICIES.NETWORK_ERROR.attempts,
+        backoff: RETRY_POLICIES.NETWORK_ERROR.backoff,
+      });
 
-      const groqProvider = new GroqProvider();
-      const pipeline = new AnalysisPipeline(groqProvider);
-
-      // 1. Fetch from source
-      const rawJobs = await source.searchJobs({ limit: 10 });
-
-      const processedIds = [];
-
-      for (const rawJob of rawJobs) {
-        // 2. Normalize & Deduplicate
-        const normalizedJob = await normalizationSvc.normalizeAndPersist(rawJob, source);
-
-        // 3. Analysis Pipeline (only run if not already analyzed)
-        const existingAnalysis = await prisma.jobAnalysis.findUnique({
-          where: { jobId: normalizedJob.id }
-        });
-
-        if (!existingAnalysis) {
-          await pipeline.processJob(normalizedJob.id, profile.id);
-        }
-
-        processedIds.push(normalizedJob.id);
-      }
-
-      return reply.send({ success: true, processedJobIds: processedIds });
+      return reply.send({ success: true, queued: true });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error during discovery' } });

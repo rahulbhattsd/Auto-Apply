@@ -1,7 +1,7 @@
 import path from 'path';
 import { chromium } from 'playwright';
-import { Worker, QUEUE_NAMES, connection, Queue } from '@autoapply/queue';
-import { prisma } from '@autoapply/database';
+import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES } from '@autoapply/queue';
+import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
@@ -66,16 +66,19 @@ const worker = new Worker(
       await adapter.fill(page, application.candidate, resumePath);
       const submitted = await adapter.submit(page);
 
-      if (!submitted) {
+      if (!submitted.confirmed) {
         await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: 'SUBMISSION_NOT_CONFIRMED' });
         return;
       }
 
-      await transitionApplication(application.id, 'SUBMITTED');
-      await verificationQueue.add('verify-application', { applicationId: application.id });
+      await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: submitted.evidence });
+      await verificationQueue.add('verify-application', { applicationId: application.id }, {
+        attempts: RETRY_POLICIES.DEFAULT.attempts,
+        backoff: RETRY_POLICIES.DEFAULT.backoff,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('CAPTCHA_DETECTED') || message.includes('MFA_DETECTED')) {
+      if (message.includes('CAPTCHA_DETECTED') || message.includes('MFA_DETECTED') || message.includes('UNKNOWN_REQUIRED_FIELD')) {
         await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message });
         return;
       }
@@ -85,18 +88,16 @@ const worker = new Worker(
       await browser.close();
     }
   },
-  { connection }
+  { connection, concurrency: env.MAX_CONCURRENT_APPLICATIONS }
 );
 worker.on('failed', async (job, err) => {
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
-        await prisma.deadLetter.create({
-            data: {
-                jobId: job.id!,
-                queueName: QUEUE_NAMES.APPLICATION,
-                error: err.message,
-                attemptCount: job.attemptsMade,
-                stackTrace: err.stack || null
-            }
+        await recordDeadLetter({
+          jobId: job.id!,
+          queueName: QUEUE_NAMES.APPLICATION,
+          error: err.message,
+          attemptCount: job.attemptsMade,
+          stackTrace: err.stack || null,
         });
     }
 });

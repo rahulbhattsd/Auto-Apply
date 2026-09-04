@@ -1,4 +1,4 @@
-import { prisma, ApplicationStatus } from '@autoapply/database';
+import { prisma, ApplicationStatus, Prisma } from '@autoapply/database';
 import Redis from 'ioredis';
 import { env } from '@autoapply/config';
 
@@ -12,7 +12,7 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
   READY_TO_APPLY: ['APPLYING', 'CANCELLED'],
   APPLYING: ['SUBMITTED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN'],
   SUBMITTED: ['VERIFYING'],
-  VERIFYING: ['VERIFIED', 'FAILED', 'RETRYING'],
+  VERIFYING: ['VERIFIED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN'],
   VERIFIED: [],
   FAILED: ['RETRYING', 'CANCELLED'],
   RETRYING: ['APPLYING', 'VERIFYING', 'FAILED'],
@@ -22,7 +22,7 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
 
 type NotificationQueue = {
   close(): Promise<void>;
-  add(name: string, data: unknown): Promise<unknown>;
+  add(name: string, data: unknown, opts?: unknown): Promise<unknown>;
 };
 
 let notificationQueue: NotificationQueue | undefined;
@@ -89,6 +89,10 @@ export async function transitionApplication(
     const companyName = app.job.company?.name || 'Unknown Company';
     const roleName = app.job.title;
     const messaging = await getMessagingClients();
+    const notificationOpts = {
+      attempts: 4,
+      backoff: { type: 'exponential', delay: 30000 },
+    };
 
     if (toState === 'VERIFIED') {
       await messaging.notificationQueue.add('notify', {
@@ -98,7 +102,7 @@ export async function transitionApplication(
         message: `Great news! Your application for ${roleName} at ${companyName} has been successfully submitted and verified.`,
         relatedApplicationId: applicationId,
         metadata,
-      });
+      }, notificationOpts);
     } else if (toState === 'NEEDS_HUMAN') {
       await messaging.notificationQueue.add('notify', {
         type: 'NEEDS_HUMAN',
@@ -107,7 +111,7 @@ export async function transitionApplication(
         message: `Your application for ${roleName} at ${companyName} requires human intervention (e.g., CAPTCHA or missing info). Please visit the Human Action Center in your dashboard to continue.`,
         relatedApplicationId: applicationId,
         metadata,
-      });
+      }, notificationOpts);
     }
 
     // Real-time propagation
@@ -118,5 +122,101 @@ export async function transitionApplication(
     }));
 
     return updatedApp;
+  });
+}
+
+const startOfUtcDay = (date = new Date()) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+
+const hasText = (value?: string | null) => Boolean(value?.trim());
+
+export async function createEligibleApplication(input: {
+  jobId: number;
+  candidateId: number;
+  minimumMatchScore: number;
+  matchScore: number;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const candidate = await tx.candidateProfile.findUnique({
+      where: { id: input.candidateId },
+      include: {
+        user: { include: { automation: true, policy: true, resumes: true } },
+      },
+    });
+    if (!candidate) return { created: false as const, reason: 'CANDIDATE_PROFILE_MISSING' };
+
+    const policy = candidate.user.policy;
+    const automation = candidate.user.automation;
+    if (!automation?.autoApplyEnabled || automation.workerStatus !== 'RUNNING') {
+      return { created: false as const, reason: 'AUTOMATION_DISABLED' };
+    }
+
+    if (input.matchScore < input.minimumMatchScore) {
+      return { created: false as const, reason: 'MATCH_SCORE_TOO_LOW' };
+    }
+
+    if (!hasText(candidate.name) || !hasText(candidate.user.email)) {
+      return { created: false as const, reason: 'REQUIRED_PROFILE_INFO_MISSING' };
+    }
+
+    const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+    if (skills.length === 0 || !candidate.user.resumes.some((resume) => resume.isMaster)) {
+      return { created: false as const, reason: 'REQUIRED_RESUME_INFO_MISSING' };
+    }
+
+    const job = await tx.job.findUnique({
+      where: { id: input.jobId },
+      include: { company: true },
+    });
+    if (!job || !hasText(job.url) || !hasText(job.description)) {
+      return { created: false as const, reason: 'JOB_NOT_VALID' };
+    }
+
+    const haystack = `${job.title}\n${job.description}`.toLowerCase();
+    const excludedKeyword = policy?.excludedKeywords.find((keyword) =>
+      haystack.includes(keyword.toLowerCase())
+    );
+    if (excludedKeyword) return { created: false as const, reason: 'EXCLUDED_KEYWORD' };
+
+    const companyName = job.company?.name.toLowerCase() ?? '';
+    const excludedCompany = policy?.excludedCompanies.find((company) =>
+      companyName === company.toLowerCase()
+    );
+    if (excludedCompany) return { created: false as const, reason: 'EXCLUDED_COMPANY' };
+
+    const existing = await tx.application.findUnique({
+      where: {
+        candidateId_canonicalJobId: {
+          candidateId: candidate.id,
+          canonicalJobId: job.canonicalFingerprint,
+        },
+      },
+    });
+    if (existing) return { created: false as const, reason: 'DUPLICATE_APPLICATION', application: existing };
+
+    const limit = policy?.maxApplicationsPerDay ?? env.MAX_APPLICATIONS_PER_DAY;
+    const today = startOfUtcDay();
+    await tx.$executeRaw(
+      Prisma.sql`INSERT INTO "CandidateDailyApplicationCount" ("candidateId", "date", "count", "updatedAt")
+                 VALUES (${candidate.id}, ${today}, 0, NOW())
+                 ON CONFLICT ("candidateId", "date") DO NOTHING`
+    );
+
+    const claimed = await tx.candidateDailyApplicationCount.updateMany({
+      where: { candidateId: candidate.id, date: today, count: { lt: limit } },
+      data: { count: { increment: 1 } },
+    });
+    if (claimed.count !== 1) return { created: false as const, reason: 'DAILY_LIMIT_REACHED' };
+
+    const application = await tx.application.create({
+      data: {
+        candidateId: candidate.id,
+        jobId: job.id,
+        canonicalJobId: job.canonicalFingerprint,
+        status: 'DISCOVERED',
+      },
+    });
+
+    return { created: true as const, application };
   });
 }

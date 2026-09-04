@@ -1,4 +1,4 @@
-import { ApplicationAdapter } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
 import type { Page } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -59,21 +59,43 @@ export class GreenhouseAdapter implements ApplicationAdapter {
     if (fileInput) {
         await fileInput.setInputFiles(resumePath);
     }
+
+    await this.assertNoUnknownRequiredFields(browserPage);
   }
 
-  async submit(page: unknown): Promise<boolean> {
+  async submit(page: unknown): Promise<SubmissionResult> {
     const browserPage = page as Page;
     await browserPage.click('input[type="submit"], button[type="submit"], #submit_app');
 
     try {
-        await browserPage.waitForSelector('h1:has-text("Thank you"), .application-success', { timeout: 10000 });
-        return true;
+        const confirmation = await browserPage.waitForSelector('h1:has-text("Thank you"), .application-success', { timeout: 10000 });
+        return {
+          confirmed: true,
+          evidence: {
+            confirmationUrl: browserPage.url(),
+            confirmationText: (await confirmation.textContent()) ?? undefined,
+          },
+        };
     } catch {
         const url = browserPage.url();
         if (url.includes('confirmation') || url.includes('success')) {
-            return true;
+            return { confirmed: true, evidence: { confirmationUrl: url } };
         }
-        return false;
+        return { confirmed: false };
+    }
+  }
+
+  private async assertNoUnknownRequiredFields(page: Page) {
+    const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
+      elements
+        .filter((element) => {
+          const input = element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+          return input.type !== 'hidden' && !input.value;
+        })
+        .map((element) => (element.getAttribute('name') || element.id || element.getAttribute('aria-label') || 'unknown'))
+    );
+    if (missing.length > 0) {
+      throw new Error(`UNKNOWN_REQUIRED_FIELD:${missing.join(',')}`);
     }
   }
 }

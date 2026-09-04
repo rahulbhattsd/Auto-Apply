@@ -1,40 +1,58 @@
-import { Worker, QUEUE_NAMES, connection } from '@autoapply/queue';
+import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
 import { Queue } from '@autoapply/queue';
-import { prisma } from '@autoapply/database';
+import { prisma, recordDeadLetter } from '@autoapply/database';
+import { loadConfiguredJobSources, NormalizationService } from '@autoapply/job-discovery';
 
 const analysisQueue = new Queue(QUEUE_NAMES.JOB_ANALYSIS, { connection });
+const normalization = new NormalizationService();
 
 const worker = new Worker(
   QUEUE_NAMES.JOB_DISCOVERY,
   async (job) => {
     console.log(`[DiscoveryWorker] Processing job ${job.id}`);
-    const userId = job.data?.userId || 1;
+    const userId = Number(job.data?.userId);
+    if (!userId) throw new Error('Discovery job requires userId');
 
-    const source = await prisma.jobSource.upsert({
-      where: { name: 'mock-discovery' },
-      update: {},
-      create: { name: 'mock-discovery' },
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      include: { user: { include: { policy: true } } },
     });
+    if (!profile) throw new Error(`Candidate profile missing for user ${userId}`);
 
-    const mockJobs = [
-      { externalId: `ext-123-${Date.now()}`, sourceId: source.id, title: 'Software Engineer', description: 'desc', url: 'http://ex.com', canonicalFingerprint: `fing-1-${Date.now()}`, postedAt: new Date() },
-      { externalId: `ext-456-${Date.now()}`, sourceId: source.id, title: 'Senior Developer', description: 'desc2', url: 'http://ex.com/2', canonicalFingerprint: `fing-2-${Date.now()}`, postedAt: new Date() }
-    ];
+    const sources = await loadConfiguredJobSources();
+    if (sources.length === 0) {
+      throw new Error('No real job discovery sources are configured');
+    }
 
-    for (const j of mockJobs) {
-      await prisma.job.upsert({
-        where: { canonicalFingerprint: j.canonicalFingerprint },
-        update: {},
-        create: { ...j }
-      });
-
-      const dbJob = await prisma.job.findUnique({ where: { canonicalFingerprint: j.canonicalFingerprint }});
-      if (dbJob) {
-        await analysisQueue.add('analyze-job', { jobId: dbJob.id, candidateId: userId });
+    let discovered = 0;
+    for (const source of sources) {
+      try {
+        const roles = profile.user.policy?.targetRoles.length ? profile.user.policy.targetRoles : profile.preferredRoles;
+        const locations = profile.preferredLocations.length ? profile.preferredLocations : [undefined];
+        for (const role of roles.length ? roles : [undefined]) {
+          for (const location of locations) {
+            const rawJobs = await source.searchJobs({ title: role, location, limit: 25 });
+            for (const rawJob of rawJobs) {
+              const normalizedJob = await normalization.normalizeAndPersist(rawJob, source);
+              discovered += 1;
+              await analysisQueue.add(
+                'analyze-job',
+                { jobId: normalizedJob.id, candidateId: profile.id },
+                {
+                  jobId: `analysis-${profile.id}-${normalizedJob.id}`,
+                  attempts: RETRY_POLICIES.AI_ERROR.attempts,
+                  backoff: RETRY_POLICIES.AI_ERROR.backoff,
+                }
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`[DiscoveryWorker] Source ${source.name} failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
-    console.log(`[DiscoveryWorker] Discovered ${mockJobs.length} jobs and queued for analysis for user ${userId}.`);
+    console.log(`[DiscoveryWorker] Discovered ${discovered} jobs and queued analysis for user ${userId}.`);
   },
   { connection }
 );
@@ -42,14 +60,12 @@ const worker = new Worker(
 worker.on('failed', async (job, err) => {
   console.error(`[DiscoveryWorker] Job ${job?.id} failed with ${err.message}`);
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
-        await prisma.deadLetter.create({
-            data: {
-                jobId: job.id!,
-                queueName: QUEUE_NAMES.JOB_DISCOVERY,
-                error: err.message,
-                attemptCount: job.attemptsMade,
-                stackTrace: err.stack || null
-            }
+        await recordDeadLetter({
+          jobId: job.id!,
+          queueName: QUEUE_NAMES.JOB_DISCOVERY,
+          error: err.message,
+          attemptCount: job.attemptsMade,
+          stackTrace: err.stack || null,
         });
     }
 });

@@ -175,6 +175,16 @@ model Application {
   @@index([createdAt])
 }
 
+model CandidateDailyApplicationCount {
+  id          Int      @id @default(autoincrement())
+  candidateId Int
+  date        DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([candidateId, date])
+}
+
 model ApplicationEvent {
   id            Int         @id @default(autoincrement())
   applicationId Int
@@ -217,6 +227,8 @@ model DeadLetter {
   attemptCount Int
   stackTrace   String?
   timestamp    DateTime @default(now())
+
+  @@unique([queueName, jobId])
 }
 
 model ResumeVersion {
