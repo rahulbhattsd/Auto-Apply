@@ -1,18 +1,17 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
 import { env } from '@autoapply/config';
 import { QUEUE_NAMES, Queue } from '@autoapply/queue';
 import { connection } from '@autoapply/queue';
-
-const getUserId = (req: FastifyRequest) => {
-  const headerId = req.headers['x-user-id'];
-  return headerId ? parseInt(headerId as string, 10) : 1;
-}
+import { verifyToken } from './middleware/auth';
 
 export default async function automationRoutes(fastify: FastifyInstance) {
+  fastify.addHook('preValidation', verifyToken);
+
   fastify.get('/api/automation', async (request) => {
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const config = await prisma.automationConfig.findFirst({ where: { userId }});
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
 
     const depths: Record<string, number> = {};
     for (const qName of Object.values(QUEUE_NAMES)) {
@@ -25,7 +24,7 @@ export default async function automationRoutes(fastify: FastifyInstance) {
 
     const appsToday = await prisma.application.count({
       where: {
-        candidateId: userId,
+        candidateId: profile?.id ?? -1,
         createdAt: { gte: today },
       }
     });
@@ -42,7 +41,7 @@ export default async function automationRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/api/automation/start', async (request) => {
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     let config = await prisma.automationConfig.findUnique({ where: { userId }});
     if (config) {
       config = await prisma.automationConfig.update({
@@ -58,7 +57,7 @@ export default async function automationRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/api/automation/pause', async (request) => {
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     let config = await prisma.automationConfig.findUnique({ where: { userId }});
     if (config) {
       config = await prisma.automationConfig.update({

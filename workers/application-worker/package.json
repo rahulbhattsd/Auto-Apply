@@ -12,6 +12,7 @@
   "dependencies": {
     "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:*",
+    "@autoapply/application-engine": "workspace:*",
     "@autoapply/queue": "workspace:*",
     "@autoapply/shared": "workspace:*",
     "playwright": "^1.62.1",

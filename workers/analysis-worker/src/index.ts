@@ -1,7 +1,7 @@
 import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
 import { Queue } from '@autoapply/queue';
 import { prisma } from '@autoapply/database';
-import { transitionApplication } from '@autoapply/application-engine';
+import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { env } from '@autoapply/config';
 
 const resumeQueue = new Queue(QUEUE_NAMES.RESUME_GENERATION, { connection });
@@ -109,3 +109,15 @@ worker.on('failed', async (job, err) => {
         });
     }
 });
+
+const shutdown = async () => {
+    await worker.close();
+    await resumeQueue.close();
+    await closeApplicationEngine();
+    await connection.quit();
+    await prisma.$disconnect();
+    process.exit(0);
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

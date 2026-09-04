@@ -8,7 +8,7 @@ export function useAuth() {
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['profile'],
-    queryFn: () => fetchApi('/profile'),
+    queryFn: () => fetchApi('/auth/me'),
     retry: false,
     staleTime: Infinity,
   });

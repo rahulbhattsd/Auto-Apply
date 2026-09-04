@@ -1,7 +1,6 @@
 import { Worker, QUEUE_NAMES, connection } from '@autoapply/queue';
 import { prisma } from '@autoapply/database';
-import { EmailNotificationProvider } from '@autoapply/shared/src/notifications.js';
-import { NotificationPayload } from '@autoapply/shared/src/notifications.js';
+import { EmailNotificationProvider, NotificationPayload } from '@autoapply/shared';
 
 const provider = new EmailNotificationProvider();
 
@@ -48,3 +47,13 @@ worker.on('failed', async (job, err) => {
 });
 
 worker.on('ready', () => console.log('Notification Worker started'));
+
+const shutdown = async () => {
+  await worker.close();
+  await connection.quit();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

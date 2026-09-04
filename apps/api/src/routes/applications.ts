@@ -1,17 +1,15 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
 import { Queue, QUEUE_NAMES, connection } from '@autoapply/queue';
-
-const getUserId = (req: FastifyRequest) => {
-  const headerId = req.headers['x-user-id'];
-  return headerId ? parseInt(headerId as string, 10) : 1;
-};
+import { verifyToken } from '../middleware/auth';
 
 export default async function applicationsRoutes(fastify: FastifyInstance) {
+  fastify.addHook('preValidation', verifyToken);
+
   fastify.get('/api/applications', async (request, reply) => {
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const applications = await prisma.application.findMany({
-      where: { candidateId: userId },
+      where: { candidate: { userId } },
       include: {
         job: { include: { company: true, source: true, analysis: true } },
         resumeVersions: { orderBy: { version: 'desc' }, take: 1 }
@@ -23,9 +21,9 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/applications/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const application = await prisma.application.findFirst({
-      where: { id: parseInt(id, 10), candidateId: userId },
+      where: { id: parseInt(id, 10), candidate: { userId } },
       include: {
         job: { include: { company: true, source: true, analysis: true } },
         events: { orderBy: { createdAt: 'asc' } },
@@ -38,9 +36,9 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/applications/:id/resume', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const application = await prisma.application.findFirst({
-      where: { id: parseInt(id, 10), candidateId: userId, status: 'NEEDS_HUMAN' }
+      where: { id: parseInt(id, 10), candidate: { userId }, status: 'NEEDS_HUMAN' }
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
@@ -60,9 +58,9 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/applications/:id/cancel', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const application = await prisma.application.findFirst({
-      where: { id: parseInt(id, 10), candidateId: userId }
+      where: { id: parseInt(id, 10), candidate: { userId } }
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found' } });
 
@@ -79,9 +77,9 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/applications/:id/mark-completed', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = getUserId(request);
+    const userId = request.user!.id;
     const application = await prisma.application.findFirst({
-      where: { id: parseInt(id, 10), candidateId: userId, status: 'NEEDS_HUMAN' }
+      where: { id: parseInt(id, 10), candidate: { userId }, status: 'NEEDS_HUMAN' }
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 

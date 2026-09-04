@@ -1,14 +1,14 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
-
-const getUserId = (req: FastifyRequest) => {
-  const headerId = req.headers['x-user-id'];
-  return headerId ? parseInt(headerId as string, 10) : 1;
-};
+import { verifyToken } from '../middleware/auth';
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
+  fastify.addHook('preValidation', verifyToken);
+
   fastify.get('/api/dashboard', async (request) => {
-    const userId = getUserId(request);
+    const userId = request.user!.id;
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    const candidateId = profile?.id ?? -1;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -28,28 +28,28 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
       prisma.jobAnalysis.count(),
       prisma.application.count({
         where: {
-          candidateId: userId,
+          candidateId,
           status: { in: ['MATCHED', 'QUEUED', 'RESUME_GENERATING', 'READY_TO_APPLY', 'APPLYING', 'SUBMITTED', 'VERIFYING', 'VERIFIED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN', 'CANCELLED'] }
         }
       }),
       prisma.application.count({
-        where: { candidateId: userId, status: { in: ['SUBMITTED', 'VERIFYING', 'VERIFIED'] } }
+        where: { candidateId, status: { in: ['SUBMITTED', 'VERIFYING', 'VERIFIED'] } }
       }),
       prisma.application.count({
-        where: { candidateId: userId, status: { in: ['QUEUED', 'RESUME_GENERATING', 'READY_TO_APPLY', 'APPLYING', 'RETRYING'] } }
+        where: { candidateId, status: { in: ['QUEUED', 'RESUME_GENERATING', 'READY_TO_APPLY', 'APPLYING', 'RETRYING'] } }
       }),
       prisma.application.count({
-        where: { candidateId: userId, status: 'NEEDS_HUMAN' }
+        where: { candidateId, status: 'NEEDS_HUMAN' }
       }),
       prisma.application.count({
-        where: { candidateId: userId, status: 'FAILED' }
+        where: { candidateId, status: 'FAILED' }
       }),
       prisma.application.count({
-        where: { candidateId: userId }
+        where: { candidateId }
       }),
       prisma.application.groupBy({
         by: ['status'],
-        where: { candidateId: userId },
+        where: { candidateId },
         _count: { status: true },
       })
     ]);
@@ -58,7 +58,7 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
         ? Math.round((applicationsSubmitted / totalApplications) * 100)
         : 0;
 
-    const statusDistribution = statusDistributionRaw.map((item: any) => ({
+    const statusDistribution = statusDistributionRaw.map((item: (typeof statusDistributionRaw)[number]) => ({
       name: item.status,
       value: item._count.status
     }));

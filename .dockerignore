@@ -1,0 +1,16 @@
+.git
+.corepack
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+.turbo
+**/.turbo
+.env
+.env.*
+!.env.example
+uploads
+**/uploads
+*.log
+artifacts

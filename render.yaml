@@ -1,0 +1,86 @@
+services:
+  - type: web
+    name: autoapply
+    runtime: docker
+    plan: 0.5c-512mb
+    region: singapore
+    dockerfilePath: ./docker/render.Dockerfile
+    dockerContext: .
+    dockerCommand: pnpm run start:render
+    preDeployCommand: pnpm db:migrate
+    healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 120
+    disk:
+      name: autoapply-uploads
+      mountPath: /app/uploads
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
+      - key: SERVE_WEB
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: autoapply-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: autoapply-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: lax
+      - key: UPLOAD_DIR
+        value: /app/uploads
+      - key: MAX_APPLICATIONS_PER_DAY
+        value: "25"
+      - key: JOB_DISCOVERY_INTERVAL_MINUTES
+        value: "30"
+      - key: MAX_CONCURRENT_APPLICATIONS
+        value: "2"
+      - key: PLAYWRIGHT_HEADLESS
+        value: "true"
+      - key: PLAYWRIGHT_BROWSER
+        value: chromium
+      - key: VITE_API_URL
+        value: /api
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama3-8b-8192
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+  - type: keyvalue
+    name: autoapply-redis
+    plan: 256mb
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
+databases:
+  - name: autoapply-db
+    plan: 0.5c-1g
+    region: singapore
+    databaseName: autoapply
+    user: autoapply
+    postgresMajorVersion: "17"
+    diskSizeGB: 15
+    ipAllowList: []

@@ -10,8 +10,6 @@ const start = async () => {
   await app.register(automationRoutes);
 
   app.get('/api/health', async (_request, reply) => {
-    const workerHealth = await import("@autoapply/queue").then(q => q.checkWorkerHealth());
-    if (!workerHealth) return reply.status(503).send({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'workers down' } });
     return reply.send({ status: 'ok' });
   });
   app.get('/api/ready', async (_request, reply) => {
@@ -27,9 +25,22 @@ const start = async () => {
 
   startScheduler();
   try {
-    const port = env.API_URL ? parseInt(new URL(env.API_URL).port) || 3000 : 3000;
-    await app.listen({ port, host: '0.0.0.0' });
-    app.log.info(`API server is running at http://localhost:${port}`);
+    await app.listen({ port: env.PORT, host: env.HOST });
+    app.log.info(`API server is running at http://${env.HOST}:${env.PORT}`);
   } catch (err) { app.log.error(err); process.exit(1); }
 };
 start();
+
+const shutdown = async (signal: NodeJS.Signals) => {
+  try {
+    await redisConnection.quit();
+    await prisma.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error(`Failed to shut down cleanly after ${signal}`, error);
+    process.exit(1);
+  }
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

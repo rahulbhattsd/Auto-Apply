@@ -8,6 +8,12 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build:render": "pnpm db:generate && pnpm run build",
+    "start:render": "node scripts/start-render.cjs",
+    "start:workers": "node scripts/start-workers.cjs",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
@@ -24,7 +30,7 @@
     "fastify-multipart": "^5.4.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.3.0",
-    "pnpm": "^11.24.0",
+    "pnpm": "9.0.0",
     "prettier": "^3.0.0",
     "prisma": "5.18.0",
     "tsx": "^4.0.0",

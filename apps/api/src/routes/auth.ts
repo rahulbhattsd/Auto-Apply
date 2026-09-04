@@ -16,6 +16,29 @@ const loginSchema = z.object({
 });
 
 export default async function authRoutes(fastify: FastifyInstance) {
+  fastify.get('/me', async (request, reply) => {
+    const token = request.cookies['jwt'];
+    if (!token) {
+      return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+    }
+
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number };
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, email: true, createdAt: true },
+      });
+
+      if (!user) {
+        return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+      }
+
+      return reply.send(user);
+    } catch {
+      return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+    }
+  });
+
   fastify.post('/register', async (request, reply) => {
     try {
       const data = registerSchema.parse(request.body);
@@ -39,8 +62,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       reply.setCookie('jwt', token, {
         path: '/',
         httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: env.COOKIE_SECURE ?? (env.NODE_ENV === 'production'),
+        sameSite: env.COOKIE_SAME_SITE,
         maxAge: 7 * 24 * 60 * 60, // 7 days
       });
 
@@ -75,8 +98,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       reply.setCookie('jwt', token, {
         path: '/',
         httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: env.COOKIE_SECURE ?? (env.NODE_ENV === 'production'),
+        sameSite: env.COOKIE_SAME_SITE,
         maxAge: 7 * 24 * 60 * 60, // 7 days
       });
 
@@ -98,7 +121,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         try {
             const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number };
             await prisma.auditLog.create({ data: { userId: decoded.userId, action: 'LOGOUT', targetType: 'User', targetId: decoded.userId } });
-        } catch(e) {}
+        } catch {
+            fastify.log.debug('Skipping logout audit for an invalid token');
+        }
     }
     return reply.send({ success: true });
   });

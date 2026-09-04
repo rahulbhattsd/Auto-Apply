@@ -1,6 +1,7 @@
 import { AIProvider, AIAnalysisResult, CandidateData, JobData, ResumeInput, TailoredResume, CoverLetterInput } from './AIProvider';
 import { z } from 'zod';
 import Groq from 'groq-sdk';
+import { env } from '@autoapply/config';
 
 const AnalysisSchema = z.object({
   matchScore: z.number().min(0).max(100),
@@ -19,12 +20,18 @@ const TailoredResumeSchema = z.object({
 
 export class GroqProvider implements AIProvider {
   name = 'groq';
-  private client: Groq;
+  private client?: Groq;
 
-  constructor() {
-    this.client = new Groq({
-      apiKey: process.env['GROQ_API_KEY'],
+  private getClient(): Groq {
+    if (!env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is required for AI analysis and resume generation');
+    }
+
+    this.client ??= new Groq({
+      apiKey: env.GROQ_API_KEY,
     });
+
+    return this.client;
   }
 
   async analyzeJob(candidate: CandidateData, job: JobData): Promise<AIAnalysisResult> {
@@ -61,13 +68,13 @@ Description:
 ${job.description}`;
 
     try {
-      const response = await this.client.chat.completions.create({
+      const response = await this.getClient().chat.completions.create({
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: candidateContext },
           { role: 'user', content: jobContext }
         ],
-        model: 'llama3-8b-8192',
+        model: env.GROQ_MODEL,
         temperature: 0,
         response_format: { type: "json_object" }
       });
@@ -113,13 +120,13 @@ Description:
 ${input.job.description}`;
 
     try {
-      const response = await this.client.chat.completions.create({
+      const response = await this.getClient().chat.completions.create({
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: candidateContext },
           { role: 'user', content: jobContext }
         ],
-        model: 'llama3-8b-8192',
+        model: env.GROQ_MODEL,
         temperature: 0,
         response_format: { type: "json_object" }
       });
@@ -157,13 +164,13 @@ Description:
 ${input.job.description}`;
 
     try {
-      const response = await this.client.chat.completions.create({
+      const response = await this.getClient().chat.completions.create({
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: candidateContext },
           { role: 'user', content: jobContext }
         ],
-        model: 'llama3-8b-8192',
+        model: env.GROQ_MODEL,
         temperature: 0,
       });
 

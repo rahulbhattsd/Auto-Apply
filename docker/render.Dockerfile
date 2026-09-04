@@ -6,13 +6,16 @@ RUN npm install -g pnpm@9.0.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY scripts ./scripts
 COPY packages ./packages
+COPY apps ./apps
 COPY workers ./workers
 COPY prisma ./prisma
 
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @autoapply/database run generate
-RUN pnpm --filter "./packages/**" --filter "./workers/**" run build
-RUN chown -R pwuser:pwuser /app
+ENV VITE_API_URL=/api
 
+RUN pnpm install --frozen-lockfile
+RUN pnpm run build:render
+RUN mkdir -p /app/uploads && chown -R pwuser:pwuser /app
+
+EXPOSE 10000
 USER pwuser
-CMD ["pnpm", "--filter", "@autoapply/discovery-worker", "start"]
+CMD ["pnpm", "run", "start:render"]

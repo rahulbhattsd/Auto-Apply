@@ -1,5 +1,4 @@
-// Fallback just in case env is not injected properly by vite
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL: string } }).env.VITE_API_URL;
+const API_BASE = import.meta.env['VITE_API_URL'] || '/api';
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const isFormData = options.body instanceof FormData;
@@ -17,7 +16,7 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || error.message || 'API request failed');
+    throw new Error(error.error?.message || error.message || 'API request failed');
   }
 
   return response.json();

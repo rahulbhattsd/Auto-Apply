@@ -1,9 +1,10 @@
-import { Worker, QUEUE_NAMES, connection } from '@autoapply/queue';
-import { transitionApplication } from '@autoapply/application-engine';
+import { Worker, QUEUE_NAMES, connection, Queue } from '@autoapply/queue';
+import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { prisma } from '@autoapply/database';
 import { GroqProvider } from '@autoapply/ai-analysis';
 
 const aiProvider = new GroqProvider();
+const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection });
 
 const worker = new Worker(
   QUEUE_NAMES.RESUME_GENERATION,
@@ -22,6 +23,10 @@ const worker = new Worker(
 
     if (!application) {
       throw new Error(`Application ${applicationId} not found`);
+    }
+
+    if (application.status === 'QUEUED') {
+      await transitionApplication(applicationId, 'RESUME_GENERATING');
     }
 
     const candidateProfile = application.candidate;
@@ -127,6 +132,8 @@ const worker = new Worker(
       version: nextVersion
     });
 
+    await applicationQueue.add('submit-application', { applicationId });
+
     console.log(`[ResumeWorker] Application ${applicationId} transitioned to READY_TO_APPLY with tailored resume version ${nextVersion}.`);
   },
   { connection }
@@ -162,3 +169,15 @@ worker.on('failed', async (job, err) => {
 });
 
 worker.on('ready', () => console.log('Resume Worker started'));
+
+const shutdown = async () => {
+  await worker.close();
+  await applicationQueue.close();
+  await closeApplicationEngine();
+  await connection.quit();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

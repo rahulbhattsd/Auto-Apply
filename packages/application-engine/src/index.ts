@@ -1,5 +1,4 @@
 import { prisma, ApplicationStatus } from '@autoapply/database';
-import { Queue, QUEUE_NAMES, connection } from '@autoapply/queue';
 import Redis from 'ioredis';
 import { env } from '@autoapply/config';
 
@@ -21,9 +20,25 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
   CANCELLED: [],
 };
 
-const notificationQueue = new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection });
-// @ts-expect-error valid injection
-const publisher = new Redis(env.REDIS_URL);
+type NotificationQueue = {
+  close(): Promise<void>;
+  add(name: string, data: unknown): Promise<unknown>;
+};
+
+let notificationQueue: NotificationQueue | undefined;
+let publisher: Redis | undefined;
+
+async function getMessagingClients() {
+  const { Queue, QUEUE_NAMES, connection } = await import('@autoapply/queue');
+  notificationQueue ??= new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection });
+  publisher ??= new Redis(env.REDIS_URL);
+  return { notificationQueue, publisher };
+}
+
+export async function closeApplicationEngine() {
+  await notificationQueue?.close();
+  publisher?.disconnect();
+}
 
 export async function transitionApplication(
   applicationId: number,
@@ -73,9 +88,10 @@ export async function transitionApplication(
     // Notification logic
     const companyName = app.job.company?.name || 'Unknown Company';
     const roleName = app.job.title;
+    const messaging = await getMessagingClients();
 
     if (toState === 'VERIFIED') {
-      await notificationQueue.add('notify', {
+      await messaging.notificationQueue.add('notify', {
         type: 'VERIFIED',
         recipient: app.candidate.user.email,
         subject: `Application Verified: ${roleName} at ${companyName}`,
@@ -84,7 +100,7 @@ export async function transitionApplication(
         metadata,
       });
     } else if (toState === 'NEEDS_HUMAN') {
-      await notificationQueue.add('notify', {
+      await messaging.notificationQueue.add('notify', {
         type: 'NEEDS_HUMAN',
         recipient: app.candidate.user.email,
         subject: `Action Required: Application for ${roleName} at ${companyName}`,
@@ -95,7 +111,7 @@ export async function transitionApplication(
     }
 
     // Real-time propagation
-    await publisher.publish('application-events', JSON.stringify({
+    await messaging.publisher.publish('application-events', JSON.stringify({
       applicationId,
       toState,
       event,

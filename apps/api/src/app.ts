@@ -3,6 +3,9 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import fs from 'fs';
+import path from 'path';
 import { env } from '@autoapply/config';
 
 import authRoutes from './routes/auth.js';
@@ -17,6 +20,10 @@ import analyticsRoutes from './routes/analytics.js';
 import metricsRoutes from './routes/metrics.js';
 
 export const buildApp = () => {
+  const allowedOrigins = env.ALLOWED_ORIGINS
+    ? env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : [env.APP_URL];
+
   const fastify = Fastify({
     logger: env.NODE_ENV === 'development' ? { level: 'debug', transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss Z', ignore: 'pid,hostname' } } } : { level: 'info' },
     disableRequestLogging: true,
@@ -25,7 +32,7 @@ export const buildApp = () => {
   fastify.addHook('onRequest', (request, _reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, service: 'api' }, 'received request'); done(); });
   fastify.addHook('onResponse', (request, reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, statusCode: reply.statusCode, responseTime: reply.elapsedTime, service: 'api' }, 'request completed'); done(); });
 
-  fastify.register(cors, { origin: env.APP_URL, credentials: true });
+  fastify.register(cors, { origin: allowedOrigins, credentials: true });
   fastify.register(cookie, { secret: env.JWT_SECRET });
   fastify.register(multipart);
   fastify.register(rateLimit, { max: 100, timeWindow: '1 minute' });
@@ -44,6 +51,30 @@ export const buildApp = () => {
   fastify.register(applicationsRoutes);
   fastify.register(analyticsRoutes);
   fastify.register(metricsRoutes);
+
+  if (env.SERVE_WEB) {
+    const webDistDir = path.resolve(__dirname, '../../web/dist');
+    if (fs.existsSync(path.join(webDistDir, 'index.html'))) {
+      fastify.register(fastifyStatic, {
+        root: webDistDir,
+        prefix: '/',
+      });
+
+      fastify.setNotFoundHandler((request, reply) => {
+        if (request.url.startsWith('/api')) {
+          return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } });
+        }
+
+        if (request.method !== 'GET' && request.method !== 'HEAD') {
+          return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } });
+        }
+
+        return reply.sendFile('index.html');
+      });
+    } else {
+      fastify.log.warn({ webDistDir }, 'SERVE_WEB is enabled but the built web app was not found');
+    }
+  }
 
   return fastify;
 };

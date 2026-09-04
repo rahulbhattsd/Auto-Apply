@@ -1,27 +1,27 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
-
-const getUserId = (req: FastifyRequest) => {
-  const headerId = req.headers['x-user-id'];
-  return headerId ? parseInt(headerId as string, 10) : 1;
-};
+import { verifyToken } from '../middleware/auth';
 
 export default async function analyticsRoutes(fastify: FastifyInstance) {
-  fastify.get('/api/analytics', async (request, reply) => {
-    const userId = getUserId(request);
+  fastify.addHook('preValidation', verifyToken);
 
-    const totalApps = await prisma.application.count({ where: { candidateId: userId } });
-    const submittedApps = await prisma.application.count({ where: { candidateId: userId, status: { in: ['SUBMITTED', 'VERIFYING', 'VERIFIED'] } } });
-    const failedApps = await prisma.application.count({ where: { candidateId: userId, status: 'FAILED' } });
-    const humanApps = await prisma.application.count({ where: { candidateId: userId, status: 'NEEDS_HUMAN' } });
+  fastify.get('/api/analytics', async (request, reply) => {
+    const userId = request.user!.id;
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    const candidateId = profile?.id ?? -1;
+
+    const totalApps = await prisma.application.count({ where: { candidateId } });
+    const submittedApps = await prisma.application.count({ where: { candidateId, status: { in: ['SUBMITTED', 'VERIFYING', 'VERIFIED'] } } });
+    const failedApps = await prisma.application.count({ where: { candidateId, status: 'FAILED' } });
+    const humanApps = await prisma.application.count({ where: { candidateId, status: 'NEEDS_HUMAN' } });
 
     const analysisAgg = await prisma.jobAnalysis.aggregate({
         _avg: { matchScore: true },
-        where: { job: { applications: { some: { candidateId: userId } } } }
+        where: { job: { applications: { some: { candidateId } } } }
     });
 
     const sourcesRaw = await prisma.application.findMany({
-        where: { candidateId: userId },
+        where: { candidateId },
         include: { job: { include: { source: true } } }
     });
 

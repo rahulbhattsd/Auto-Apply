@@ -10,9 +10,15 @@ const worker = new Worker(
     console.log(`[DiscoveryWorker] Processing job ${job.id}`);
     const userId = job.data?.userId || 1;
 
+    const source = await prisma.jobSource.upsert({
+      where: { name: 'mock-discovery' },
+      update: {},
+      create: { name: 'mock-discovery' },
+    });
+
     const mockJobs = [
-      { externalId: `ext-123-${Date.now()}`, sourceId: 1, title: 'Software Engineer', description: 'desc', url: 'http://ex.com', canonicalFingerprint: `fing-1-${Date.now()}`, postedAt: new Date() },
-      { externalId: `ext-456-${Date.now()}`, sourceId: 1, title: 'Senior Developer', description: 'desc2', url: 'http://ex.com/2', canonicalFingerprint: `fing-2-${Date.now()}`, postedAt: new Date() }
+      { externalId: `ext-123-${Date.now()}`, sourceId: source.id, title: 'Software Engineer', description: 'desc', url: 'http://ex.com', canonicalFingerprint: `fing-1-${Date.now()}`, postedAt: new Date() },
+      { externalId: `ext-456-${Date.now()}`, sourceId: source.id, title: 'Senior Developer', description: 'desc2', url: 'http://ex.com/2', canonicalFingerprint: `fing-2-${Date.now()}`, postedAt: new Date() }
     ];
 
     for (const j of mockJobs) {
@@ -48,3 +54,14 @@ worker.on('failed', async (job, err) => {
     }
 });
 worker.on('ready', () => console.log('Discovery Worker started'));
+
+const shutdown = async () => {
+  await worker.close();
+  await analysisQueue.close();
+  await connection.quit();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
