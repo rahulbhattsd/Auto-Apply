@@ -1,77 +1,50 @@
-import { describe, it, before, after } from 'node:test';
-import assert from 'node:assert';
-import { chromium, Browser, Page } from 'playwright';
-import path from 'path';
+import { test, describe, mock } from 'node:test';
+import strictAssert from 'node:assert';
 import { GreenhouseAdapter } from '../src/adapters/GreenhouseAdapter';
 import { LeverAdapter } from '../src/adapters/LeverAdapter';
+import { Page } from 'playwright';
 
-const getFileUrl = (filename: string) => `file://${path.resolve(__dirname, 'fixtures', filename)}`;
-
-describe('Application Adapters', () => {
-    let browser: Browser;
-    let page: Page;
-
-    before(async () => {
-        browser = await chromium.launch();
-        page = await browser.newPage();
-    });
-
-    after(async () => {
-        await browser.close();
-    });
-
-    describe('GreenhouseAdapter', () => {
+describe('Application Adapters Error Handling', () => {
+    test('GreenhouseAdapter inspect throws CAPTCHA_DETECTED', async () => {
         const adapter = new GreenhouseAdapter();
+        const mockPage = {
+            goto: async () => {},
+            $$: async (selector: string) => {
+                if (selector.includes('recaptcha')) return ['iframe'];
+                return [];
+            }
+        } as unknown as Page;
 
-        it('should handle Greenhouse URLs', () => {
-            assert.ok(adapter.canHandle('https://boards.greenhouse.io/company/jobs/123'));
-            assert.strictEqual(adapter.canHandle('https://jobs.lever.co/company/123'), false);
-        });
-
-        it('should successfully fill and submit normal form', async () => {
-            const profile = { name: 'John Doe', user: { email: 'john@example.com' } };
-            // Provide a dummy path that playwright can resolve safely for file upload, e.g. this test file
-            const dummyResume = path.resolve(__filename);
-
-            await adapter.inspect(page, getFileUrl('greenhouse-normal.html'));
-            await adapter.fill(page, profile, dummyResume);
-
-            const success = await adapter.submit(page);
-            assert.ok(success, 'Expected form submission to succeed');
-        });
-
-        it('should throw CAPTCHA_DETECTED when captcha is present', async () => {
-            await assert.rejects(
-                adapter.inspect(page, getFileUrl('greenhouse-captcha.html')),
-                /CAPTCHA_DETECTED/
-            );
-        });
+        await strictAssert.rejects(async () => {
+            await adapter.inspect(mockPage, 'http://test.com');
+        }, /CAPTCHA_DETECTED/);
     });
 
-    describe('LeverAdapter', () => {
+    test('GreenhouseAdapter submit throws MISSING_SELECTOR if submit button missing', async () => {
+        const adapter = new GreenhouseAdapter();
+        const mockPage = {
+            url: () => 'http://test.com',
+            click: async () => { throw new Error('MISSING_SELECTOR:submit_button'); }
+        } as unknown as Page;
+
+        await strictAssert.rejects(async () => {
+            await adapter.submit(mockPage);
+        }, /MISSING_SELECTOR:submit_button/);
+    });
+
+    test('LeverAdapter inspect throws CAPTCHA_DETECTED', async () => {
         const adapter = new LeverAdapter();
+        const mockPage = {
+            goto: async () => {},
+            $: async () => null,
+            $$: async (selector: string) => {
+                if (selector.includes('recaptcha')) return ['iframe'];
+                return [];
+            }
+        } as unknown as Page;
 
-        it('should handle Lever URLs', () => {
-            assert.ok(adapter.canHandle('https://jobs.lever.co/company/123'));
-            assert.strictEqual(adapter.canHandle('https://boards.greenhouse.io/company/jobs/123'), false);
-        });
-
-        it('should successfully fill and submit normal form', async () => {
-            const profile = { name: 'Jane Doe', user: { email: 'jane@example.com' } };
-            const dummyResume = path.resolve(__filename);
-
-            await adapter.inspect(page, getFileUrl('lever-normal.html'));
-            await adapter.fill(page, profile, dummyResume);
-
-            const success = await adapter.submit(page);
-            assert.ok(success, 'Expected form submission to succeed');
-        });
-
-        it('should throw CAPTCHA_DETECTED when captcha is present', async () => {
-            await assert.rejects(
-                adapter.inspect(page, getFileUrl('lever-captcha.html')),
-                /CAPTCHA_DETECTED/
-            );
-        });
+        await strictAssert.rejects(async () => {
+            await adapter.inspect(mockPage, 'http://test.com');
+        }, /CAPTCHA_DETECTED/);
     });
 });

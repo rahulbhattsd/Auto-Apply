@@ -21,23 +21,24 @@ const configSchema = z.object({
   type: z.literal('http-json'),
   endpoint: z.string().url(),
   headers: z.record(z.string()).optional(),
+  timeout: z.number().optional().default(10000),
+  retries: z.number().optional().default(2),
 });
-
-const responseSchema = z.union([
-  z.array(jobResultSchema),
-  z.object({ jobs: z.array(jobResultSchema) }),
-]);
 
 export class HttpJsonJobSource implements JobSource {
   readonly name: string;
   private readonly endpoint: string;
   private readonly headers: Record<string, string>;
+  private readonly timeout: number;
+  private readonly retries: number;
 
   constructor(name: string, config: unknown) {
     const parsed = configSchema.parse(config);
     this.name = name;
     this.endpoint = parsed.endpoint;
     this.headers = parsed.headers ?? {};
+    this.timeout = parsed.timeout;
+    this.retries = parsed.retries;
   }
 
   async searchJobs(query: JobSearchQuery): Promise<JobResult[]> {
@@ -48,12 +49,72 @@ export class HttpJsonJobSource implements JobSource {
     if (query.employmentType) url.searchParams.set('employmentType', query.employmentType);
     if (query.limit) url.searchParams.set('limit', String(query.limit));
 
-    const response = await fetch(url, { headers: this.headers });
-    if (!response.ok) {
-      throw new Error(`Job source ${this.name} failed with HTTP ${response.status}`);
-    }
+    let attempt = 0;
+    while (attempt <= this.retries) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-    const parsed = responseSchema.parse(await response.json());
-    return Array.isArray(parsed) ? parsed : parsed.jobs;
+      try {
+        const response = await fetch(url.toString(), {
+          headers: this.headers,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Job source ${this.name} failed with HTTP ${response.status}`);
+        }
+
+        const data = await response.json() as unknown;
+
+        // Handle array or object with `jobs` property
+        let rawJobs: unknown[] = [];
+        if (Array.isArray(data)) {
+            rawJobs = data;
+        } else if (data && typeof data === 'object' && 'jobs' in data && Array.isArray((data as Record<string, unknown>)['jobs'])) {
+            rawJobs = (data as Record<string, unknown>)['jobs'] as unknown[];
+        }
+
+        // Validate each job individually, filtering out bad ones
+        const validJobs: JobResult[] = [];
+        for (const rawJob of rawJobs) {
+            const parsed = jobResultSchema.safeParse(rawJob);
+            if (parsed.success) {
+                const job: JobResult = {
+                  externalId: parsed.data.externalId,
+                  title: parsed.data.title,
+                  company: parsed.data.company,
+                  description: parsed.data.description,
+                  url: parsed.data.url,
+                  postedAt: parsed.data.postedAt,
+                  skills: parsed.data.skills,
+                };
+
+                if (parsed.data.location) job.location = parsed.data.location;
+                if (parsed.data.remoteType) job.remoteType = parsed.data.remoteType;
+                if (parsed.data.employmentType) job.employmentType = parsed.data.employmentType;
+                if (parsed.data.salaryMin !== undefined) job.salaryMin = parsed.data.salaryMin;
+                if (parsed.data.salaryMax !== undefined) job.salaryMax = parsed.data.salaryMax;
+                if (parsed.data.currency) job.currency = parsed.data.currency;
+
+                validJobs.push(job);
+            } else {
+                console.warn(`[HttpJsonJobSource] Failed to parse job from ${this.name}: ${parsed.error.message}`);
+            }
+        }
+
+        return validJobs;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (attempt === this.retries) {
+          throw new Error(`Job source ${this.name} failed after ${this.retries} retries: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        attempt++;
+        // Small exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      }
+    }
+    return [];
   }
 }

@@ -78,6 +78,9 @@ importers:
       '@autoapply/ai-analysis':
         specifier: workspace:*
         version: link:../../packages/ai-analysis
+      '@autoapply/application-engine':
+        specifier: workspace:*
+        version: link:../../packages/application-engine
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -424,6 +427,9 @@ importers:
       '@prisma/client':
         specifier: ^5.18.0
         version: 5.18.0(prisma@5.18.0)
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       '@autoapply/eslint-config':
         specifier: workspace:^
@@ -522,6 +528,9 @@ importers:
 
   workers/analysis-worker:
     dependencies:
+      '@autoapply/ai-analysis':
+        specifier: workspace:*
+        version: link:../../packages/ai-analysis
       '@autoapply/application-engine':
         specifier: workspace:*
         version: link:../../packages/application-engine
@@ -617,6 +626,9 @@ importers:
       '@autoapply/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@autoapply/job-discovery':
+        specifier: workspace:*
+        version: link:../../packages/job-discovery
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
