@@ -31,7 +31,10 @@ const worker = new Worker(
         const locations = profile.preferredLocations.length ? profile.preferredLocations : [undefined];
         for (const role of roles.length ? roles : [undefined]) {
           for (const location of locations) {
-            const rawJobs = await source.searchJobs({ title: role, location, limit: 25 });
+            const query: import('@autoapply/job-discovery').JobSearchQuery = { limit: 25 };
+            if (role) query.title = role;
+            if (location) query.location = location;
+            const rawJobs = await source.searchJobs(query);
             for (const rawJob of rawJobs) {
               const normalizedJob = await normalization.normalizeAndPersist(rawJob, source);
               discovered += 1;

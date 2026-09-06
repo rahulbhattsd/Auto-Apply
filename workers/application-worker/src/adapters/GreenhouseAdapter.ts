@@ -41,23 +41,33 @@ export class GreenhouseAdapter implements ApplicationAdapter {
 
   async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
     const browserPage = page as Page;
+
+    // Idempotency: Prevent duplicate filling if already on success page
+    const url = browserPage.url();
+    if (url.includes('confirmation') || url.includes('success')) {
+        return;
+    }
+
     const candidate = profile as CandidateProfileForApplication;
-    await browserPage.fill('input[name="first_name"]', candidate.name?.split(' ')[0] || '');
-    await browserPage.fill('input[name="last_name"]', candidate.name?.split(' ').slice(1).join(' ') || '');
-    await browserPage.fill('input[name="email"]', candidate.user?.email || '');
+    await browserPage.waitForSelector('input[name="first_name"]', { state: 'visible', timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:input[name="first_name"]'); });
+    await browserPage.fill('input[name="first_name"]', candidate.name?.split(' ')[0] || '', { timeout: 5000 });
+    await browserPage.fill('input[name="last_name"]', candidate.name?.split(' ').slice(1).join(' ') || '', { timeout: 5000 });
+    await browserPage.fill('input[name="email"]', candidate.user?.email || '', { timeout: 5000 });
 
     if (candidate.phone) {
-      await browserPage.fill('input[name="phone"]', candidate.phone);
+      await browserPage.fill('input[name="phone"]', candidate.phone, { timeout: 5000 });
     }
 
     if (candidate.linkedin) {
       const linkedinInput = await browserPage.$('input[name*="linkedin"]');
-      if (linkedinInput) await linkedinInput.fill(candidate.linkedin);
+      if (linkedinInput) await linkedinInput.fill(candidate.linkedin, { timeout: 5000 });
     }
 
     const fileInput = await browserPage.$('input[type="file"][name*="resume"]');
     if (fileInput) {
-        await fileInput.setInputFiles(resumePath);
+        await fileInput.setInputFiles(resumePath, { timeout: 5000 });
+    } else {
+        throw new Error('MISSING_SELECTOR:input[type="file"]');
     }
 
     await this.assertNoUnknownRequiredFields(browserPage);
@@ -65,16 +75,24 @@ export class GreenhouseAdapter implements ApplicationAdapter {
 
   async submit(page: unknown): Promise<SubmissionResult> {
     const browserPage = page as Page;
-    await browserPage.click('input[type="submit"], button[type="submit"], #submit_app');
+
+    // Idempotency check before click
+    const initialUrl = browserPage.url();
+    if (initialUrl.includes('confirmation') || initialUrl.includes('success')) {
+        return { confirmed: true, evidence: { confirmationUrl: initialUrl } };
+    }
+
+    await browserPage.click('input[type="submit"], button[type="submit"], #submit_app', { timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:submit_button'); });
 
     try {
         const confirmation = await browserPage.waitForSelector('h1:has-text("Thank you"), .application-success', { timeout: 10000 });
+        const textContent = await confirmation.textContent();
         return {
           confirmed: true,
           evidence: {
             confirmationUrl: browserPage.url(),
-            confirmationText: (await confirmation.textContent()) ?? undefined,
-          },
+            ...(textContent ? { confirmationText: textContent } : {})
+          }
         };
     } catch {
         const url = browserPage.url();
@@ -89,7 +107,7 @@ export class GreenhouseAdapter implements ApplicationAdapter {
     const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
       elements
         .filter((element) => {
-          const input = element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+          const input = element as unknown as { type: string, value: string };
           return input.type !== 'hidden' && !input.value;
         })
         .map((element) => (element.getAttribute('name') || element.id || element.getAttribute('aria-label') || 'unknown'))
