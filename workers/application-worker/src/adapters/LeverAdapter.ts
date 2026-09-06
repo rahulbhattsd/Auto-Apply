@@ -80,8 +80,16 @@ export class LeverAdapter implements ApplicationAdapter {
         await browserPage.waitForTimeout(500);
         const text = await browserPage.textContent('body');
         const confirmed = text?.includes('Application submitted') || text?.includes('Thank you') || false;
+
+        const evidence: { confirmationUrl?: string; confirmationText?: string } = {
+          confirmationUrl: browserPage.url()
+        };
+        if (text) {
+          evidence.confirmationText = text;
+        }
+
         return confirmed
-          ? { confirmed: true, evidence: { confirmationUrl: browserPage.url(), confirmationText: text ?? undefined } }
+          ? { confirmed: true, evidence }
           : { confirmed: false };
     }
   }
@@ -90,7 +98,7 @@ export class LeverAdapter implements ApplicationAdapter {
     const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
       elements
         .filter((element) => {
-          const input = element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+          const input = element as unknown as { type: string, value: string, getAttribute: (attr: string) => string | null, id: string };
           return input.type !== 'hidden' && !input.value;
         })
         .map((element) => (element.getAttribute('name') || element.id || element.getAttribute('aria-label') || 'unknown'))

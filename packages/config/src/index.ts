@@ -17,7 +17,6 @@ const envSchema = z.object({
   COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('lax'),
   COOKIE_SECURE: z.coerce.boolean().optional(),
   SERVE_WEB: z.coerce.boolean().default(false),
-  UPLOAD_DIR: z.string().optional(),
   MAX_APPLICATIONS_PER_DAY: z.coerce.number().default(25),
   JOB_DISCOVERY_INTERVAL_MINUTES: z.coerce.number().default(30),
   MAX_CONCURRENT_APPLICATIONS: z.coerce.number().default(2),
@@ -30,6 +29,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  S3_ENDPOINT: z.string(),
+  S3_BUCKET: z.string(),
+  S3_ACCESS_KEY_ID: z.string(),
+  S3_SECRET_ACCESS_KEY: z.string(),
 });
 
 const renderExternalUrl = process.env['RENDER_EXTERNAL_URL'];

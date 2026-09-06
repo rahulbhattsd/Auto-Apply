@@ -11,7 +11,11 @@ const processes = [
 ];
 
 const children = new Map();
+const restartCounts = new Map();
 let shuttingDown = false;
+
+const MAX_RESTARTS = 5;
+const BASE_BACKOFF_MS = 1000;
 
 const start = ([name, args]) => {
   const child = spawn('pnpm', args, {
@@ -25,7 +29,24 @@ const start = ([name, args]) => {
     if (shuttingDown) return;
 
     console.error(`[render-supervisor] ${name} exited with code ${code ?? 'null'} signal ${signal ?? 'null'}`);
-    shutdown(code && code > 0 ? code : 1);
+
+    const count = (restartCounts.get(name) || 0) + 1;
+    restartCounts.set(name, count);
+
+    if (count > MAX_RESTARTS) {
+      console.error(`[render-supervisor] ${name} exceeded max restart count (${MAX_RESTARTS}). Giving up on this process.`);
+      if (children.size === 0) {
+        shutdown(1);
+      }
+      return;
+    }
+
+    const backoff = BASE_BACKOFF_MS * Math.pow(2, count - 1);
+    console.log(`[render-supervisor] Restarting ${name} in ${backoff}ms (attempt ${count}/${MAX_RESTARTS})`);
+
+    setTimeout(() => {
+      if (!shuttingDown) start([name, args]);
+    }, backoff);
   });
 };
 
@@ -37,7 +58,12 @@ const shutdown = (exitCode = 0) => {
     if (!child.killed) child.kill('SIGTERM');
   }
 
-  setTimeout(() => process.exit(exitCode), 25000).unref();
+  const timeout = setTimeout(() => process.exit(exitCode), 25000);
+  timeout.unref();
+
+  if (children.size === 0) {
+    process.exit(exitCode);
+  }
 };
 
 process.once('SIGINT', () => shutdown(0));

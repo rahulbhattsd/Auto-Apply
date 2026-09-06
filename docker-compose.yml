@@ -27,6 +27,35 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  create-bucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/autoapply-resumes || true;
+      /usr/bin/mc anonymous set public myminio/autoapply-resumes;
+      "
+
   migrate:
     build:
       context: .
@@ -58,14 +87,17 @@ services:
       APP_URL: http://localhost:5173
       API_URL: http://localhost:3000
       ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
-      UPLOAD_DIR: /app/uploads
-    volumes:
-      - uploads_data:/app/uploads
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: autoapply-resumes
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
     depends_on:
       migrate:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
     command: pnpm --filter @autoapply/api dev
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -98,12 +130,17 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/autoapply?schema=public
       REDIS_URL: redis://redis:6379
-      UPLOAD_DIR: /app/uploads
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: autoapply-resumes
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
     depends_on: &worker-depends
       migrate:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
     command: pnpm --filter @autoapply/discovery-worker dev
 
   analysis-worker:
@@ -130,8 +167,6 @@ services:
       dockerfile: docker/worker.Dockerfile
     env_file: .env
     environment: *worker-env
-    volumes:
-      - uploads_data:/app/uploads
     depends_on: *worker-depends
     command: pnpm --filter @autoapply/application-worker dev
 
@@ -156,4 +191,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  uploads_data:
+  minio_data:
