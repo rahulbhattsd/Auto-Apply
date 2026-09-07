@@ -1,32 +1,48 @@
-import fs from 'fs';
-import path from 'path';
-import { pipeline } from 'stream/promises';
 import type { MultipartFile } from '@fastify/multipart';
 import { env } from '@autoapply/config';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 export interface StorageProvider {
   uploadFile(file: MultipartFile, userId: number): Promise<{ url: string; fileName: string }>;
 }
 
-export class LocalStorageProvider implements StorageProvider {
-  private uploadDir: string;
+export class S3StorageProvider implements StorageProvider {
+  private s3: S3Client;
+  private bucket: string;
 
   constructor() {
-    this.uploadDir = env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads');
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
+    this.s3 = new S3Client({
+      endpoint: env.S3_ENDPOINT,
+      region: 'auto',
+      forcePathStyle: true, // Crucial for Minio and local testing
+      credentials: {
+        accessKeyId: env.S3_ACCESS_KEY_ID,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+      },
+    });
+    this.bucket = env.S3_BUCKET;
   }
 
   async uploadFile(file: MultipartFile, userId: number): Promise<{ url: string; fileName: string }> {
-    const fileName = `${userId}-${Date.now()}-${file.filename}`;
-    const filePath = path.join(this.uploadDir, fileName);
+    const objectKey = `resumes/${userId}/${Date.now()}-${file.filename}`;
 
-    await pipeline(file.file, fs.createWriteStream(filePath));
+    const chunks = [];
+    for await (const chunk of file.file) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    await this.s3.send(new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: objectKey,
+      Body: buffer,
+    }));
 
     return {
-      url: `/uploads/${fileName}`,
+      url: objectKey,
       fileName: file.filename,
     };
   }
 }
+
+export const storageProvider = new S3StorageProvider();

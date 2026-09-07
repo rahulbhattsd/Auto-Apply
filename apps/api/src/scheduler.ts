@@ -5,20 +5,30 @@ import { prisma } from '@autoapply/database';
 
 export const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection });
 let schedulerTimer: NodeJS.Timeout | undefined;
-let schedulerRunning = false;
 
 export async function startScheduler() {
   const interval = (env.JOB_DISCOVERY_INTERVAL_MINUTES || 30) * 60 * 1000;
+  const instanceId = Math.random().toString(36).substring(2, 15);
 
   if (schedulerTimer) return;
 
   const runOnce = async () => {
-    if (schedulerRunning) return;
-    schedulerRunning = true;
+    const lockKey = 'lock:discovery-scheduler';
+    const lockTtlMs = Math.floor(interval / 2); // Ensure it expires before the next tick
+
+    // Attempt to acquire the lock
+    const acquired = await connection.set(lockKey, instanceId, 'PX', lockTtlMs, 'NX');
+
+    if (!acquired) {
+      console.log(`[Scheduler] Lock not acquired, another instance is running the scheduler.`);
+      return;
+    }
+
     try {
       await scheduleActiveUsers(interval);
     } finally {
-      schedulerRunning = false;
+      // We do not immediately release the lock so that other instances within the same time bucket
+      // do not run it. It will expire naturally before the next interval.
     }
   };
 

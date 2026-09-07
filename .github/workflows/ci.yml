@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: autoapply
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+          - 9001:9001
+        options: >-
+          --command "server /data"
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v3
+      with:
+        version: 9.0.0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'pnpm'
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Setup test environment
+      run: cp .env.test .env
+
+    - name: Setup Minio Test Bucket
+      run: |
+        docker run --network host --entrypoint /bin/sh minio/mc:latest -c "
+        /usr/bin/mc config host add myminio http://127.0.0.1:9000 minioadmin minioadmin;
+        /usr/bin/mc mb myminio/autoapply-resumes || true;
+        /usr/bin/mc anonymous set public myminio/autoapply-resumes;
+        "
+
+    - name: Generate Prisma Client
+      run: pnpm --filter @autoapply/database run generate
+
+    - name: Run Database Migrations
+      run: pnpm db:migrate
+
+    - name: Build
+      run: pnpm run build
+
+    - name: Run Tests
+      run: pnpm run test
+
+    - name: Run Typecheck
+      run: pnpm run typecheck

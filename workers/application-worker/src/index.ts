@@ -6,9 +6,13 @@ import { closeApplicationEngine, transitionApplication } from '@autoapply/applic
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
 import { LeverAdapter } from './adapters/LeverAdapter';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import fs from 'fs';
 
 const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection });
 const adapters = [new GreenhouseAdapter(), new LeverAdapter()];
+
+import { downloadResumeFromS3 } from './utils/s3';
 
 const worker = new Worker(
   QUEUE_NAMES.APPLICATION,
@@ -51,19 +55,19 @@ const worker = new Worker(
     }
 
     const latestResume = application.resumeVersions[0];
-    const resumePath = latestResume?.basedOnMasterResume.fileUrl.startsWith('/uploads/')
-      ? path.join(env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads'), path.basename(latestResume.basedOnMasterResume.fileUrl))
-      : latestResume?.basedOnMasterResume.fileUrl;
+    const fileUrl = latestResume?.basedOnMasterResume.fileUrl;
 
-    if (!resumePath) {
+    if (!fileUrl) {
       throw new Error(`No generated resume is available for application ${applicationId}`);
     }
+
+    const tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
 
     const browser = await chromium.launch({ headless: env.PLAYWRIGHT_HEADLESS });
     try {
       const page = await browser.newPage();
       await adapter.inspect(page, application.job.url);
-      await adapter.fill(page, application.candidate, resumePath);
+      await adapter.fill(page, application.candidate, tempResumePath);
       const submitted = await adapter.submit(page);
 
       if (!submitted.confirmed) {
@@ -86,12 +90,28 @@ const worker = new Worker(
       throw error;
     } finally {
       await browser.close();
+      if (fs.existsSync(tempResumePath)) {
+        fs.unlinkSync(tempResumePath);
+      }
     }
   },
   { connection, concurrency: env.MAX_CONCURRENT_APPLICATIONS }
 );
 worker.on('failed', async (job, err) => {
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
+        try {
+          const applicationId = Number(job.data.applicationId);
+          const app = await prisma.application.findUnique({ where: { id: applicationId } });
+
+          if (app && (app.status === 'APPLYING' || app.status === 'VERIFYING' || app.status === 'RETRYING')) {
+            await transitionApplication(applicationId, 'NEEDS_HUMAN', { reason: err.message });
+          } else {
+            console.log(`[ApplicationWorker] Application ${applicationId} is in status ${app?.status}, skipping transition to NEEDS_HUMAN`);
+          }
+        } catch (transitionErr) {
+          console.error(`[ApplicationWorker] Failed to transition application ${job?.data?.applicationId} to NEEDS_HUMAN:`, transitionErr);
+        }
+
         await recordDeadLetter({
           jobId: job.id!,
           queueName: QUEUE_NAMES.APPLICATION,

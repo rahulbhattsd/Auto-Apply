@@ -15,4 +15,4 @@ RUN pnpm --filter "./packages/**" --filter "./workers/**" run build
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
-CMD ["pnpm", "--filter", "@autoapply/discovery-worker", "start"]
+CMD ["pnpm", "run", "start:workers"]

@@ -1,9 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
 import { verifyToken } from '../middleware/auth';
-import { LocalStorageProvider } from '../services/storage';
-
-const storageProvider = new LocalStorageProvider();
+import { storageProvider } from '../services/storage';
 
 export default async function resumesRoutes(fastify: FastifyInstance) {
   fastify.addHook('preValidation', verifyToken);
