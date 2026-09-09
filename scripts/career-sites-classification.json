@@ -1,0 +1,482 @@
+[
+  {
+    "company": "Postman",
+    "url": "https://www.postman.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.postman.com/company/careers/ or HTML content"
+  },
+  {
+    "company": "Freshworks",
+    "url": "https://www.freshworks.com/company/careers/",
+    "detectedAts": "workday",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Zoho",
+    "url": "https://careers.zohocorp.com/",
+    "detectedAts": "zohorecruit",
+    "notes": "Matched URL signature on https://careers.zohocorp.com/jobs/Careers"
+  },
+  {
+    "company": "Chargebee",
+    "url": "https://www.chargebee.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.chargebee.com/careers/ or HTML content"
+  },
+  {
+    "company": "BrowserStack",
+    "url": "https://www.browserstack.com/careers",
+    "detectedAts": "workday",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Hasura",
+    "url": "https://hasura.io/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://promptql.io/careers or HTML content"
+  },
+  {
+    "company": "Whatfix",
+    "url": "https://whatfix.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://whatfix.com/careers/ or HTML content"
+  },
+  {
+    "company": "CleverTap",
+    "url": "https://clevertap.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://clevertap.com/careers/ or HTML content"
+  },
+  {
+    "company": "MoEngage",
+    "url": "https://www.moengage.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.moengage.com/careers/ or HTML content"
+  },
+  {
+    "company": "Keka",
+    "url": "https://www.keka.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: fetch failed"
+  },
+  {
+    "company": "Razorpay",
+    "url": "https://razorpay.com/jobs/",
+    "detectedAts": "greenhouse",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "CRED",
+    "url": "https://careers.cred.club/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.cred.club/ or HTML content"
+  },
+  {
+    "company": "Groww",
+    "url": "https://groww.in/p/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://groww.in/p/careers or HTML content"
+  },
+  {
+    "company": "Zerodha",
+    "url": "https://zerodha.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.zerodha.com/ or HTML content"
+  },
+  {
+    "company": "Jupiter",
+    "url": "https://jupiter.money/careers/",
+    "detectedAts": "keka",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Fi Money",
+    "url": "https://fi.money/careers",
+    "detectedAts": "lever",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Pine Labs",
+    "url": "https://www.pinelabs.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.pinelabs.com/careers or HTML content"
+  },
+  {
+    "company": "BharatPe",
+    "url": "https://bharatpe.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://bharatpe.com/careers or HTML content"
+  },
+  {
+    "company": "Open Financial Technologies",
+    "url": "https://open.money/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://open.money/careers or HTML content"
+  },
+  {
+    "company": "KreditBee",
+    "url": "https://www.kreditbee.in/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.kreditbee.in/careers or HTML content"
+  },
+  {
+    "company": "PhonePe",
+    "url": "https://www.phonepe.com/en/careers.html",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.phonepe.com/careers/ or HTML content"
+  },
+  {
+    "company": "Juspay",
+    "url": "https://juspay.io/careers",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: fetch failed"
+  },
+  {
+    "company": "Sarvam AI",
+    "url": "https://sarvam.ai/careers",
+    "detectedAts": "ashby",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Krutrim",
+    "url": "https://www.olakrutrim.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.olakrutrim.com/careers or HTML content"
+  },
+  {
+    "company": "Uniphore",
+    "url": "https://www.uniphore.com/company/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.uniphore.com/company/careers/ or HTML content"
+  },
+  {
+    "company": "Mad Street Den",
+    "url": "https://www.madstreetden.com/careers/",
+    "detectedAts": "darwinbox",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Observe.AI",
+    "url": "https://www.observe.ai/company/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.observe.ai/company/careers or HTML content"
+  },
+  {
+    "company": "Yellow.ai",
+    "url": "https://yellow.ai/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://yellow.ai/careers/ or HTML content"
+  },
+  {
+    "company": "Glean",
+    "url": "https://www.glean.com/careers",
+    "detectedAts": "greenhouse",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "DevRev",
+    "url": "https://devrev.ai/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://devrev.ai/careers or HTML content"
+  },
+  {
+    "company": "Rocketlane",
+    "url": "https://rocketlane.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.rocketlane.com/careers or HTML content"
+  },
+  {
+    "company": "Fractal Analytics",
+    "url": "https://fractal.ai/careers/",
+    "detectedAts": "workday",
+    "notes": "Matched URL signature on https://fractal.wd1.myworkdayjobs.com/Careers"
+  },
+  {
+    "company": "Hugging Face",
+    "url": "https://apply.workable.com/huggingface/",
+    "detectedAts": "workable",
+    "notes": "Matched URL signature on https://apply.workable.com/huggingface/"
+  },
+  {
+    "company": "Meesho",
+    "url": "https://meesho.io/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.meesho.io/careers or HTML content"
+  },
+  {
+    "company": "Zepto",
+    "url": "https://www.zeptonow.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.zeptonow.com/careers or HTML content"
+  },
+  {
+    "company": "Swiggy",
+    "url": "https://careers.swiggy.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.swiggy.com/ or HTML content"
+  },
+  {
+    "company": "Zomato",
+    "url": "https://www.zomato.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.eternal.com/careers/ or HTML content"
+  },
+  {
+    "company": "Urban Company",
+    "url": "https://careers.urbancompany.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.urbancompany.com/ or HTML content"
+  },
+  {
+    "company": "Cars24",
+    "url": "https://www.cars24.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.cars24.com/careers/ or HTML content"
+  },
+  {
+    "company": "Myntra",
+    "url": "https://www.myntra.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.myntra.com/careers or HTML content"
+  },
+  {
+    "company": "Lenskart",
+    "url": "https://lenskart.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.lenskart.com/en-us/careers or HTML content"
+  },
+  {
+    "company": "Porter",
+    "url": "https://porter.in/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://porter.in/careers or HTML content"
+  },
+  {
+    "company": "Ninjacart",
+    "url": "https://ninjacart.com/careers/",
+    "detectedAts": "darwinbox",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "CRED",
+    "url": "https://careers.cred.club/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.cred.club/ or HTML content"
+  },
+  {
+    "company": "Pocket FM",
+    "url": "https://pocketfm.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://pocketfm.com/ or HTML content"
+  },
+  {
+    "company": "InMobi",
+    "url": "https://www.inmobi.com/company/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.inmobi.com/company/careers or HTML content"
+  },
+  {
+    "company": "Unacademy",
+    "url": "https://unacademy.com/careers",
+    "detectedAts": "darwinbox",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Nykaa",
+    "url": "https://careers.nykaa.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.nykaa.com/ or HTML content"
+  },
+  {
+    "company": "Atlassian",
+    "url": "https://www.atlassian.com/company/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.atlassian.com/company/careers or HTML content"
+  },
+  {
+    "company": "ServiceNow",
+    "url": "https://careers.servicenow.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.servicenow.com/ or HTML content"
+  },
+  {
+    "company": "Databricks",
+    "url": "https://www.databricks.com/company/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.databricks.com/company/careers or HTML content"
+  },
+  {
+    "company": "HubSpot",
+    "url": "https://www.hubspot.com/jobs",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.hubspot.com/careers or HTML content"
+  },
+  {
+    "company": "Okta",
+    "url": "https://www.okta.com/company/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.okta.com/company/careers/ or HTML content"
+  },
+  {
+    "company": "Salesforce",
+    "url": "https://careers.salesforce.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.salesforce.com/company/careers/ or HTML content"
+  },
+  {
+    "company": "Adobe",
+    "url": "https://careers.adobe.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.adobe.com/us/en or HTML content"
+  },
+  {
+    "company": "NVIDIA",
+    "url": "https://www.nvidia.com/en-us/about-nvidia/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.nvidia.com/en-us/about-nvidia/careers/ or HTML content"
+  },
+  {
+    "company": "Cisco",
+    "url": "https://jobs.cisco.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.cisco.com/global/en or HTML content"
+  },
+  {
+    "company": "Intuit",
+    "url": "https://careers.intuit.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.intuit.com/careers/ or HTML content"
+  },
+  {
+    "company": "Oracle",
+    "url": "https://careers.oracle.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.oracle.com/en/sites/jobsearch or HTML content"
+  },
+  {
+    "company": "VMware",
+    "url": "https://careers.vmware.com/",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: fetch failed"
+  },
+  {
+    "company": "Arista Networks",
+    "url": "https://www.arista.com/en/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.arista.com/en/careers or HTML content"
+  },
+  {
+    "company": "JPMorgan Chase",
+    "url": "https://careers.jpmorgan.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.jpmorganchase.com/careers?redirect=careers_jpm or HTML content"
+  },
+  {
+    "company": "Goldman Sachs",
+    "url": "https://www.goldmansachs.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.goldmansachs.com/careers/ or HTML content"
+  },
+  {
+    "company": "Morgan Stanley",
+    "url": "https://www.morganstanley.com/people/working-here",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.morganstanley.com/people/working-here or HTML content"
+  },
+  {
+    "company": "Flipkart",
+    "url": "https://www.flipkartcareers.com/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.flipkartcareers.com/ or HTML content"
+  },
+  {
+    "company": "Delhivery",
+    "url": "https://www.delhivery.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.delhivery.com/careers or HTML content"
+  },
+  {
+    "company": "Rivigo",
+    "url": "https://www.rivigo.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: fetch failed"
+  },
+  {
+    "company": "Shiprocket",
+    "url": "https://www.shiprocket.in/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.shiprocket.in/careers/ or HTML content"
+  },
+  {
+    "company": "Ninjacart",
+    "url": "https://ninjacart.com/careers/",
+    "detectedAts": "darwinbox",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Jupiter",
+    "url": "https://jupiter.money/careers/",
+    "detectedAts": "keka",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "CoinSwitch",
+    "url": "https://coinswitch.co/careers",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://coinswitch.co/careers or HTML content"
+  },
+  {
+    "company": "CoinDCX",
+    "url": "https://coindcx.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://coindcx.com/careers/ or HTML content"
+  },
+  {
+    "company": "Games24x7",
+    "url": "https://www.games24x7.com/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.games24x7.com/careers or HTML content"
+  },
+  {
+    "company": "Dream11",
+    "url": "https://careers.dream11.com/",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: fetch failed"
+  },
+  {
+    "company": "Publicis Sapient",
+    "url": "https://careers.publicissapient.com/",
+    "detectedAts": "icims",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Media.net",
+    "url": "https://careers.media.net/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://careers.media.net/ or HTML content"
+  },
+  {
+    "company": "Sprinklr",
+    "url": "https://www.sprinklr.com/careers/",
+    "detectedAts": "workday",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Icertis",
+    "url": "https://www.icertis.com/company/careers/",
+    "detectedAts": "workday",
+    "notes": "Matched DOM signature in HTML"
+  },
+  {
+    "company": "Druva",
+    "url": "https://www.druva.com/about/careers/",
+    "detectedAts": "unknown",
+    "notes": "Could not determine ATS from https://www.druva.com/about/careers/ or HTML content"
+  },
+  {
+    "company": "Sulekha",
+    "url": "https://www.sulekha.com/careers",
+    "detectedAts": "unknown",
+    "notes": "Error fetching URL: This operation was aborted"
+  }
+]
