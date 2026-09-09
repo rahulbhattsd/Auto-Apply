@@ -1,9 +1,9 @@
-import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
+import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { Queue } from '@autoapply/queue';
 import { prisma, recordDeadLetter } from '@autoapply/database';
 import { loadConfiguredJobSources, NormalizationService } from '@autoapply/job-discovery';
 
-const analysisQueue = new Queue(QUEUE_NAMES.JOB_ANALYSIS, { connection });
+const analysisQueue = new Queue(QUEUE_NAMES.JOB_ANALYSIS, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 const normalization = new NormalizationService();
 
 const worker = new Worker(

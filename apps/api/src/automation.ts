@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
 import { env } from '@autoapply/config';
-import { QUEUE_NAMES, Queue } from '@autoapply/queue';
+import { QUEUE_NAMES, Queue, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { connection } from '@autoapply/queue';
 import { verifyToken } from './middleware/auth';
 
@@ -15,7 +15,7 @@ export default async function automationRoutes(fastify: FastifyInstance) {
 
     const depths: Record<string, number> = {};
     for (const qName of Object.values(QUEUE_NAMES)) {
-      const q = new Queue(qName, { connection });
+      const q = new Queue(qName, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
       depths[qName] = await q.count();
     }
 

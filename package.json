@@ -10,7 +10,6 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "build:render": "pnpm db:generate && pnpm run build",
-    "start:render": "node scripts/start-render.cjs",
     "start:workers": "node scripts/start-workers.cjs",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",

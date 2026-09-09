@@ -39,14 +39,27 @@ const worker = new Worker(
 );
 worker.on('failed', async (job, err) => {
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
-        await recordDeadLetter({
-          jobId: job.id!,
-          queueName: QUEUE_NAMES.VERIFICATION,
-          error: err.message,
-          attemptCount: job.attemptsMade,
-          stackTrace: err.stack || null,
-        });
+    try {
+      const applicationId = Number(job.data.applicationId);
+      const app = await prisma.application.findUnique({ where: { id: applicationId } });
+
+      if (app && (app.status === 'VERIFYING' || app.status === 'SUBMITTED')) {
+        await transitionApplication(applicationId, 'NEEDS_HUMAN', { reason: err.message });
+      } else {
+        console.log(`[VerificationWorker] Application ${applicationId} is in status ${app?.status}, skipping transition to NEEDS_HUMAN`);
+      }
+    } catch (transitionErr) {
+      console.error(`[VerificationWorker] Failed to transition application ${job?.data?.applicationId} to NEEDS_HUMAN:`, transitionErr);
     }
+
+    await recordDeadLetter({
+      jobId: job.id!,
+      queueName: QUEUE_NAMES.VERIFICATION,
+      error: err.message,
+      attemptCount: job.attemptsMade,
+      stackTrace: err.stack || null,
+    });
+  }
 });
 worker.on('ready', () => console.log('Verification Worker started'));
 

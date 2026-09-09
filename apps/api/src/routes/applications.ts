@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
-import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
+import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { transitionApplication } from '@autoapply/application-engine';
 import { verifyToken } from '../middleware/auth';
 
@@ -43,7 +43,7 @@ export default async function applicationsRoutes(fastify: FastifyInstance) {
     });
     if (!application) return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Application not found or not in NEEDS_HUMAN state' } });
 
-    const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection });
+    const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
     await applicationQueue.add('resume-application', { applicationId: application.id }, {
       attempts: RETRY_POLICIES.BROWSER_ERROR.attempts,
       backoff: RETRY_POLICIES.BROWSER_ERROR.backoff,

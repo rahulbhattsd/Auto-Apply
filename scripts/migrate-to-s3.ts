@@ -26,7 +26,7 @@ async function main() {
   console.log(`Found ${resumes.length} resumes to migrate.`);
 
   // Fallback to local process.cwd()/uploads if UPLOAD_DIR is not present
-  const uploadDir = env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads');
+  const uploadDir = path.resolve(process.cwd(), 'uploads');
 
   for (const resume of resumes) {
     const localFileName = resume.fileUrl.replace('/uploads/', '');

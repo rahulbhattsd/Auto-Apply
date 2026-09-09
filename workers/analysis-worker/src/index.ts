@@ -1,10 +1,10 @@
-import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
+import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { Queue } from '@autoapply/queue';
 import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, createEligibleApplication, transitionApplication } from '@autoapply/application-engine';
 import { AnalysisPipeline, GroqProvider } from '@autoapply/ai-analysis';
 
-const resumeQueue = new Queue(QUEUE_NAMES.RESUME_GENERATION, { connection });
+const resumeQueue = new Queue(QUEUE_NAMES.RESUME_GENERATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 const analysisPipeline = new AnalysisPipeline(new GroqProvider());
 
 const worker = new Worker(

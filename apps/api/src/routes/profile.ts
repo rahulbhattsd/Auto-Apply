@@ -90,11 +90,11 @@ export default async function profileRoutes(fastify: FastifyInstance) {
           maximumSalary: data.maximumSalary ?? null,
           workAuthorization: data.workAuthorization ?? null,
           noticePeriod: data.noticePeriod ?? null,
-          education: data.education === undefined ? null : data.education,
-          experience: data.experience === undefined ? null : data.experience,
-          skills: data.skills === undefined ? null : data.skills,
-          projects: data.projects === undefined ? null : data.projects,
-          certifications: data.certifications === undefined ? null : data.certifications,
+          education: data.education === undefined ? null : (data.education ?? []) as any,
+          experience: data.experience === undefined ? null : (data.experience ?? []) as any,
+          skills: data.skills === undefined ? null : (data.skills ?? []) as any,
+          projects: data.projects === undefined ? null : (data.projects ?? []) as any,
+          certifications: data.certifications === undefined ? null : (data.certifications ?? []) as any,
       };
 
       const profile = await prisma.candidateProfile.upsert({
