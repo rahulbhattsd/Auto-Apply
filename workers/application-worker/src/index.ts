@@ -1,15 +1,15 @@
-import path from 'path';
+
 import { chromium } from 'playwright';
-import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES } from '@autoapply/queue';
+import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
 import { LeverAdapter } from './adapters/LeverAdapter';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+
 import fs from 'fs';
 
-const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection });
+const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 const adapters = [new GreenhouseAdapter(), new LeverAdapter()];
 
 import { downloadResumeFromS3 } from './utils/s3';
@@ -103,7 +103,7 @@ worker.on('failed', async (job, err) => {
           const applicationId = Number(job.data.applicationId);
           const app = await prisma.application.findUnique({ where: { id: applicationId } });
 
-          if (app && (app.status === 'APPLYING' || app.status === 'VERIFYING' || app.status === 'RETRYING')) {
+          if (app && (app.status === 'APPLYING' || app.status === 'VERIFYING')) {
             await transitionApplication(applicationId, 'NEEDS_HUMAN', { reason: err.message });
           } else {
             console.log(`[ApplicationWorker] Application ${applicationId} is in status ${app?.status}, skipping transition to NEEDS_HUMAN`);

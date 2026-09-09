@@ -23,6 +23,11 @@ export const DEFAULT_RETRY_CONFIG = {
   },
 };
 
+export const DEFAULT_JOB_OPTIONS = {
+  removeOnComplete: { age: 24 * 60 * 60, count: 1000 },
+  removeOnFail: { age: 7 * 24 * 60 * 60, count: 5000 },
+};
+
 export const RETRY_POLICIES = {
   NETWORK_ERROR: { attempts: 4, backoff: { type: 'exponential', delay: 30000 } },
   AI_ERROR: { attempts: 3, backoff: { type: 'exponential', delay: 60000 } },

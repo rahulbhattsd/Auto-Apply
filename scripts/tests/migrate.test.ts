@@ -16,7 +16,7 @@ test('migrate-to-s3 migrates local resumes to s3', async () => {
     const originalUpdate = prisma.resume.update;
 
     const testFile = 'fake-resume-file.pdf';
-    const uploadDir = env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads');
+    const uploadDir = path.resolve(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -63,6 +63,6 @@ test('migrate-to-s3 migrates local resumes to s3', async () => {
     } finally {
       prisma.resume.findMany = originalFindMany;
       prisma.resume.update = originalUpdate;
-      fs.unlinkSync(path.join(env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads'), testFile));
+      fs.unlinkSync(path.join(path.resolve(process.cwd(), 'uploads'), testFile));
     }
 });

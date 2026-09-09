@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { verifyToken } from '../middleware/auth';
 import { prisma } from '@autoapply/database';
 import { Prisma } from '@prisma/client';
-import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES } from '@autoapply/queue';
+import { Queue, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 
 const QuerySchema = z.object({
   score: z.string().optional(),
@@ -102,7 +102,7 @@ export async function jobRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ success: false, error: { code: 'ERROR', message: 'Candidate profile required for job discovery' } });
       }
 
-      const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection });
+      const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
       await discoveryQueue.add('discover-jobs', { userId: request.user!.id }, {
         jobId: `manual-discovery-${request.user!.id}-${Date.now()}`,
         attempts: RETRY_POLICIES.NETWORK_ERROR.attempts,

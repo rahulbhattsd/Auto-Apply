@@ -21,7 +21,7 @@ const envSchema = z.object({
   JOB_DISCOVERY_INTERVAL_MINUTES: z.coerce.number().default(30),
   MAX_CONCURRENT_APPLICATIONS: z.coerce.number().default(2),
   GROQ_API_KEY: z.string().optional(),
-  GROQ_MODEL: z.string().default('llama3-8b-8192'),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
   PLAYWRIGHT_HEADLESS: z.coerce.boolean().default(true),
   PLAYWRIGHT_BROWSER: z.enum(['chromium']).default('chromium'),
   SMTP_HOST: z.string().optional(),

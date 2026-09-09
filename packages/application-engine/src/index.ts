@@ -29,8 +29,8 @@ let notificationQueue: NotificationQueue | undefined;
 let publisher: Redis | undefined;
 
 async function getMessagingClients() {
-  const { Queue, QUEUE_NAMES, connection } = await import('@autoapply/queue');
-  notificationQueue ??= new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection });
+  const { Queue, QUEUE_NAMES, connection, DEFAULT_JOB_OPTIONS } = await import('@autoapply/queue');
+  notificationQueue ??= new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
   publisher ??= new Redis(env.REDIS_URL);
   return { notificationQueue, publisher };
 }
@@ -114,12 +114,11 @@ export async function transitionApplication(
       }, notificationOpts);
     }
 
-    // Real-time propagation
-    await messaging.publisher.publish('application-events', JSON.stringify({
-      applicationId,
-      toState,
-      event,
-    }));
+    // Real-time propagation — scoped to the owning user only
+    await messaging.publisher.publish(
+      `application-events:${app.candidate.user.id}`,
+      JSON.stringify({ applicationId, toState, event })
+    );
 
     return updatedApp;
   });

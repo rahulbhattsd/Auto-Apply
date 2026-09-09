@@ -1,9 +1,9 @@
-import { Queue } from '@autoapply/queue';
+import { Queue, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { connection, QUEUE_NAMES, RETRY_POLICIES } from '@autoapply/queue';
 import { env } from '@autoapply/config';
 import { prisma } from '@autoapply/database';
 
-export const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection });
+export const discoveryQueue = new Queue(QUEUE_NAMES.JOB_DISCOVERY, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 let schedulerTimer: NodeJS.Timeout | undefined;
 
 export async function startScheduler() {

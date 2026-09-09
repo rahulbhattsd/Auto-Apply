@@ -20,7 +20,7 @@ const start = async () => {
       await redisConnection.ping();
       return reply.send({ status: 'ok', db: 'ok', redis: 'ok' });
     } catch (error) {
-      app.log.error(error, 'Ready check failed');
+      app?.log.error(error, 'Ready check failed');
       return reply.status(503).send({ success: false, error: { code: 'ERROR', message: 'Service not ready' } });
     }
   });
@@ -28,8 +28,8 @@ const start = async () => {
   await startScheduler();
   try {
     await app.listen({ port: env.PORT, host: env.HOST });
-    app.log.info(`API server is running at http://${env.HOST}:${env.PORT}`);
-  } catch (err) { app.log.error(err); process.exit(1); }
+    app?.log.info(`API server is running at http://${env.HOST}:${env.PORT}`);
+  } catch (err) { app?.log.error(err); process.exit(1); }
 };
 start();
 

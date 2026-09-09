@@ -17,24 +17,52 @@ describe('Real-Time Propagation via SSE', () => {
 
   after(async () => {
     await app.close();
+    const { connection } = await import('@autoapply/queue');
+    await connection.disconnect();
   });
 
-  it('should receive SSE events on state transition', async () => {
-    const controller = new AbortController();
+  it('should return 401 if no cookie is provided', async () => {
+    const res = await fetch('http://localhost:3001/api/events');
+    assert.strictEqual(res.status, 401);
+  });
 
-    const res = await fetch('http://localhost:3001/api/events', { signal: controller.signal });
+  it('should only receive events for the specific user', async () => {
+    const { default: jwt } = await import('jsonwebtoken');
+    const { env } = await import('@autoapply/config');
+    const { connection } = await import('@autoapply/queue');
+
+    // User 123
+    const token123 = jwt.sign({ userId: 123, email: 'user123@test.com', role: 'USER' }, env.JWT_SECRET);
+
+    const controller = new AbortController();
+    const res = await fetch('http://localhost:3001/api/events', {
+      headers: { Cookie: `jwt=${token123}` },
+      signal: controller.signal
+    });
+
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.headers.get('content-type'), 'text/event-stream');
+    assert.ok(res.headers.get('content-type')?.includes('text/event-stream'));
 
     const reader = res.body?.getReader();
     assert.ok(reader);
 
-    // Read connected event
-    const { value: connectedValue } = await reader.read();
-    const connectedStr = new TextDecoder().decode(connectedValue);
-    assert.ok(connectedStr.includes('data: {"type":"CONNECTED"}'));
+    // Initial connection message
+    const { value: v1 } = await reader.read();
+    assert.ok(new TextDecoder().decode(v1).includes('CONNECTED'));
+
+    // Emit event to OTHER user
+    await connection.publish('application-events:999', JSON.stringify({ event: 'test-999' }));
+    // Emit event to OUR user
+    await connection.publish('application-events:123', JSON.stringify({ event: 'test-123' }));
+
+    const { value: v2 } = await reader.read();
+    const msg = new TextDecoder().decode(v2);
+
+    assert.ok(!msg.includes('test-999'));
+    assert.ok(msg.includes('test-123'));
 
     controller.abort();
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 50));
+    await connection.disconnect();
   });
 });

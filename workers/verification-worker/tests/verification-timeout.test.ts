@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { Queue, QUEUE_NAMES, connection, Worker } from '@autoapply/queue';
 import { prisma } from '@autoapply/database';
 
-test('Application transitions to NEEDS_HUMAN on exhausted generic error', async (t) => {
+test('Verification Application transitions to NEEDS_HUMAN on exhausted generic error', async (t) => {
   const testAppId = 99999;
 
   let transitionedTo = '';
@@ -15,7 +15,7 @@ test('Application transitions to NEEDS_HUMAN on exhausted generic error', async 
   const workerFile = require('fs').readFileSync(require('path').resolve(__dirname, '../src/index.ts'), 'utf-8');
 
   const originalFindUnique = prisma.application.findUnique;
-  let mockStatus = 'APPLYING';
+  let mockStatus = 'VERIFYING';
 
   prisma.application.findUnique = async (args: any) => {
     if (args.where.id === testAppId) {
@@ -41,7 +41,7 @@ test('Application transitions to NEEDS_HUMAN on exhausted generic error', async 
           const applicationId = Number(job.data.applicationId);
           const app = await prisma.application.findUnique({ where: { id: applicationId } });
 
-          if (app && (app.status === 'APPLYING' || app.status === 'VERIFYING')) {
+          if (app && (app.status === 'VERIFYING' || app.status === 'SUBMITTED' || app.status === 'RETRYING')) {
             await transitionApplicationMock(applicationId, 'NEEDS_HUMAN', { reason: err.message });
           }
         } catch (transitionErr) {
