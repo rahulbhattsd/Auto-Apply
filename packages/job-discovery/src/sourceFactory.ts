@@ -4,6 +4,8 @@ import { prisma } from '@autoapply/database';
 import { JobSource } from './JobSource';
 import { MockJobSource } from './MockJobSource';
 import { HttpJsonJobSource } from './HttpJsonJobSource';
+import { GreenhouseJobSource } from './GreenhouseJobSource';
+import { LeverJobSource } from './LeverJobSource';
 
 type DbSource = {
   name: string;
@@ -21,6 +23,14 @@ export function createJobSource(source: DbSource): JobSource | null {
 
   if (config['type'] === 'http-json') {
     return new HttpJsonJobSource(source.name, config);
+  }
+
+  if (config['type'] === 'greenhouse') {
+    return new GreenhouseJobSource(source.name, config);
+  }
+
+  if (config['type'] === 'lever') {
+    return new LeverJobSource(source.name, config);
   }
 
   return null;

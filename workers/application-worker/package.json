@@ -2,33 +2,27 @@
   "name": "@autoapply/application-worker",
   "version": "1.0.0",
   "private": true,
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsc --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --env-file=../../.env.test --test tests/**/*.test.ts"
   },
   "dependencies": {
-    "@autoapply/config": "workspace:*",
-    "@autoapply/database": "workspace:*",
     "@autoapply/application-engine": "workspace:*",
-    "@autoapply/queue": "workspace:*",
+    "@autoapply/config": "workspace:*",
+    "@autoapply/database": "workspace:^",
+    "@autoapply/queue": "workspace:^",
     "@autoapply/shared": "workspace:*",
-    "playwright": "^1.62.1",
-    "zod": "^3.23.8",
-    "@autoapply/ai-analysis": "workspace:^",
-    "@aws-sdk/client-s3": "^3.1128.0"
+    "playwright": "^1.45.0"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",
     "@autoapply/typescript-config": "workspace:*",
-    "@eslint/js": "^9.0.0",
     "@types/node": "^22.0.0",
-    "eslint": "^9.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.5.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript": "^5.5.0"
   }
 }
