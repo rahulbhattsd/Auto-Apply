@@ -6,11 +6,12 @@ import { closeApplicationEngine, transitionApplication } from '@autoapply/applic
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
 import { LeverAdapter } from './adapters/LeverAdapter';
+import { GenericFallbackAdapter } from './adapters/GenericFallbackAdapter';
 
 import fs from 'fs';
 
 const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
-const adapters = [new GreenhouseAdapter(), new LeverAdapter()];
+const adapters = [new GreenhouseAdapter(), new LeverAdapter(), new GenericFallbackAdapter()];
 
 import { downloadResumeFromS3 } from './utils/s3';
 
