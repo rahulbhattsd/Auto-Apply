@@ -14,5 +14,7 @@ RUN pnpm --filter @autoapply/database run generate
 RUN pnpm --filter "./packages/**" --filter "./workers/**" run build
 RUN chown -R pwuser:pwuser /app
 
+RUN apt-get update && apt-get install -y xvfb x11vnc novnc websockify
+
 USER pwuser
 CMD ["pnpm", "run", "start:workers"]

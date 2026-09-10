@@ -10,13 +10,14 @@ export const VALID_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> =
   QUEUED: ['RESUME_GENERATING', 'CANCELLED'],
   RESUME_GENERATING: ['READY_TO_APPLY', 'FAILED'],
   READY_TO_APPLY: ['APPLYING', 'CANCELLED'],
-  APPLYING: ['SUBMITTED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN'],
+  APPLYING: ['SUBMITTED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN', 'AWAITING_HUMAN_VERIFICATION'],
   SUBMITTED: ['VERIFYING'],
   VERIFYING: ['VERIFIED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN'],
   VERIFIED: [],
   FAILED: ['RETRYING', 'CANCELLED'],
   RETRYING: ['APPLYING', 'VERIFYING', 'FAILED'],
   NEEDS_HUMAN: ['APPLYING', 'CANCELLED', 'REJECTED'],
+  AWAITING_HUMAN_VERIFICATION: ['APPLYING', 'NEEDS_HUMAN'],
   CANCELLED: [],
 };
 
@@ -111,6 +112,18 @@ export async function transitionApplication(
         message: `Your application for ${roleName} at ${companyName} requires human intervention (e.g., CAPTCHA or missing info). Please visit the Human Action Center in your dashboard to continue.`,
         relatedApplicationId: applicationId,
         metadata,
+      }, notificationOpts);
+    } else if (toState === 'AWAITING_HUMAN_VERIFICATION') {
+      await messaging.notificationQueue.add('notify', {
+        type: 'NEEDS_HUMAN', // Reuse NEEDS_HUMAN path for notification
+        recipient: app.candidate.user.email,
+        subject: `Live Action Required: Application for ${roleName} at ${companyName}`,
+        message: `Your application for ${roleName} at ${companyName} hit a CAPTCHA. Please visit the live view to resolve it now.`,
+        relatedApplicationId: applicationId,
+        metadata: {
+          ...metadata,
+          url: `${env.APP_URL}/human-actions/${applicationId}?token=${metadata?.['token']}`
+        },
       }, notificationOpts);
     }
 

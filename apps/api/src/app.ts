@@ -4,6 +4,7 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
+import websocket from '@fastify/websocket';
 import fs from 'fs';
 import path from 'path';
 import { env } from '@autoapply/config';
@@ -18,6 +19,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import applicationsRoutes from './routes/applications.js';
 import analyticsRoutes from './routes/analytics.js';
 import metricsRoutes from './routes/metrics.js';
+import humanActionRoutes from './routes/human-action.js';
 
 export const buildApp = () => {
   const allowedOrigins = env.ALLOWED_ORIGINS
@@ -49,6 +51,7 @@ export const buildApp = () => {
   });
   fastify.addHook('onResponse', (request, reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, statusCode: reply.statusCode, responseTime: reply.elapsedTime, service: 'api' }, 'request completed'); done(); });
 
+  fastify.register(websocket);
   fastify.register(cors, { origin: allowedOrigins, credentials: true });
   fastify.register(cookie, { secret: env.JWT_SECRET });
   fastify.register(multipart);
@@ -68,6 +71,7 @@ export const buildApp = () => {
   fastify.register(applicationsRoutes);
   fastify.register(analyticsRoutes);
   fastify.register(metricsRoutes);
+  fastify.register(humanActionRoutes);
 
   if (env.SERVE_WEB) {
     const webDistDir = path.resolve(__dirname, '../../web/dist');

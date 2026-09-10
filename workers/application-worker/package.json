@@ -11,16 +11,20 @@
     "test": "tsx --env-file=../../.env.test --test tests/**/*.test.ts"
   },
   "dependencies": {
+    "@autoapply/ai-analysis": "workspace:^",
     "@autoapply/application-engine": "workspace:*",
     "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:^",
     "@autoapply/queue": "workspace:^",
     "@autoapply/shared": "workspace:*",
+    "jsonwebtoken": "^9.0.3",
     "playwright": "^1.45.0"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",
     "@autoapply/typescript-config": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1128.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"

@@ -20,6 +20,7 @@ const envSchema = z.object({
   MAX_APPLICATIONS_PER_DAY: z.coerce.number().default(25),
   JOB_DISCOVERY_INTERVAL_MINUTES: z.coerce.number().default(30),
   MAX_CONCURRENT_APPLICATIONS: z.coerce.number().default(2),
+  MAX_CONCURRENT_HUMAN_HANDOFFS: z.coerce.number().default(3),
   GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
   PLAYWRIGHT_HEADLESS: z.coerce.boolean().default(true),
