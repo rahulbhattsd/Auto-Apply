@@ -8,6 +8,7 @@ import JobDetails from './pages/JobDetails';
 import ApplicationsList from './pages/ApplicationsList';
 import ApplicationDetails from './pages/ApplicationDetails';
 import HumanActionCenter from './pages/HumanActionCenter';
+import HumanActionView from './pages/HumanActionView';
 import Analytics from './pages/Analytics';
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/applications" element={<ApplicationsList />} />
           <Route path="/applications/:id" element={<ApplicationDetails />} />
           <Route path="/human-actions" element={<HumanActionCenter />} />
+          <Route path="/human-actions/:id" element={<HumanActionView />} />
           <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </BrowserRouter>
