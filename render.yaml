@@ -74,6 +74,15 @@ services:
     dockerCommand: pnpm run start:workers
     maxShutdownDelaySeconds: 120
     envVars:
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: autoapply
+          envVarKey: JWT_SECRET
+      - key: APP_URL
+        value: https://autoapply.onrender.com
+      - key: API_URL
+        value: https://autoapply.onrender.com/api
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
