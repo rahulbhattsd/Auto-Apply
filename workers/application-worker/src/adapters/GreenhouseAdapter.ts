@@ -100,6 +100,26 @@ export class GreenhouseAdapter implements ApplicationAdapter {
       }
     }
 
+    const radios = await browserPage.$$('input[type="radio"]');
+    for (const radio of radios) {
+      const labelText = await browserPage.evaluate((el) => {
+        const id = el.getAttribute('id');
+        if (id) {
+            const label = document.querySelector(`label[for="${id}"]`);
+            if (label) return label.textContent?.toLowerCase() || '';
+        }
+        const parentLabel = el.closest('label');
+        if (parentLabel) {
+            return parentLabel.textContent?.toLowerCase() || '';
+        }
+        return '';
+      }, radio);
+
+      if (labelText.includes('decline') || labelText.includes('prefer not') || labelText.includes('wish not')) {
+         await radio.check();
+      }
+    }
+
     await this.assertNoUnknownRequiredFields(browserPage);
   }
 

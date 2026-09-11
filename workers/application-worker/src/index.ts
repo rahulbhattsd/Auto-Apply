@@ -8,13 +8,14 @@ import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
 import { LeverAdapter } from './adapters/LeverAdapter';
 import { GenericFallbackAdapter } from './adapters/GenericFallbackAdapter';
 import { WorkdayAdapter } from './adapters/WorkdayAdapter';
+import { DarwinboxAdapter } from './adapters/DarwinboxAdapter';
 
 import fs from 'fs';
 import { exec } from 'child_process';
 import jwt from 'jsonwebtoken';
 
 const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
-const adapters = [new GreenhouseAdapter(), new LeverAdapter(), new WorkdayAdapter(), new GenericFallbackAdapter()];
+const adapters = [new GreenhouseAdapter(), new LeverAdapter(), new WorkdayAdapter(), new DarwinboxAdapter(), new GenericFallbackAdapter()];
 
 import { downloadResumeFromS3 } from './utils/s3';
 
