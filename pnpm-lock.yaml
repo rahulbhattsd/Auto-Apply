@@ -11,6 +11,9 @@ importers:
       '@prisma/client':
         specifier: 5.18.0
         version: 5.18.0(prisma@5.18.0)
+      playwright:
+        specifier: ^1.45.0
+        version: 1.62.1
     devDependencies:
       '@fastify/cookie':
         specifier: ^11.1.2
@@ -436,18 +439,27 @@ importers:
 
   packages/job-discovery:
     dependencies:
+      '@autoapply/ai-analysis':
+        specifier: workspace:^
+        version: link:../ai-analysis
       '@autoapply/config':
         specifier: workspace:*
         version: link:../config
       '@autoapply/database':
         specifier: workspace:^
         version: link:../database
+      '@autoapply/queue':
+        specifier: workspace:^
+        version: link:../queue
       '@autoapply/shared':
         specifier: workspace:*
         version: link:../shared
       '@prisma/client':
         specifier: ^5.18.0
         version: 5.18.0(prisma@5.18.0)
+      playwright:
+        specifier: ^1.45.0
+        version: 1.62.1
       zod:
         specifier: ^3.23.8
         version: 3.25.76
