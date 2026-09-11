@@ -6,6 +6,7 @@ import { MockJobSource } from './MockJobSource';
 import { HttpJsonJobSource } from './HttpJsonJobSource';
 import { GreenhouseJobSource } from './GreenhouseJobSource';
 import { LeverJobSource } from './LeverJobSource';
+import { HtmlJobSource } from './HtmlJobSource';
 
 type DbSource = {
   name: string;
@@ -31,6 +32,10 @@ export function createJobSource(source: DbSource): JobSource | null {
 
   if (config['type'] === 'lever') {
     return new LeverJobSource(source.name, config);
+  }
+
+  if (config['type'] === 'html') {
+    return new HtmlJobSource(source.name, config);
   }
 
   return null;
