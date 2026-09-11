@@ -50,7 +50,8 @@ CRITICAL INSTRUCTIONS:
 1. If a field's purpose is ambiguous or it doesn't correspond to any known candidate attribute, OMIT it from the mapping entirely - do not guess a value.
 2. Only output string values. Do not output booleans, arrays, or objects in the values.
 3. Do NOT invent, hallucinate, or fabricate any data that is not explicitly present in the candidate data.
-4. Output ONLY the JSON object, no markdown, no explanation.`;
+4. VOLUNTARY / DIVERSITY FIELDS: If a field asks for demographic data (like gender, race, veteran status, or disability status) AND is part of a voluntary self-identification, EEO, or diversity section, you MUST select "Decline to answer", "I prefer not to say", or equivalent. Do NOT use the candidate's stored demographic data for these fields. Only use candidate demographic data if it is a standard, required form field clearly separate from voluntary EEO surveys.
+5. Output ONLY the JSON object, no markdown, no explanation.`;
 
     const candidateContext = `Candidate Data:\n${JSON.stringify(candidateData, null, 2)}`;
     const fieldsContext = `Form Fields:\n${JSON.stringify(fields, null, 2)}`;

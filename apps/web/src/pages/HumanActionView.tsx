@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchApi } from '../lib/api';
 import { useEffect, useRef } from 'react';
 // @ts-expect-error novnc doesn't export standard types for core/rfb correctly
-import RFB from '@novnc/novnc/core/rfb';
+import RFB from '@novnc/novnc/core/rfb.js';
 
 export default function HumanActionView() {
   const { id } = useParams();

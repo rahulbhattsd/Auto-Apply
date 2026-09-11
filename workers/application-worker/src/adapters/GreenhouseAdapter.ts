@@ -70,6 +70,36 @@ export class GreenhouseAdapter implements ApplicationAdapter {
         throw new Error('MISSING_SELECTOR:input[type="file"]');
     }
 
+    // Handle voluntary EEO fields (Decline to answer)
+    const selects = await browserPage.$$('select');
+    for (const select of selects) {
+      const id = await select.getAttribute('id') || '';
+      const name = await select.getAttribute('name') || '';
+      const labelText = await browserPage.evaluate((el) => {
+        const id = el.getAttribute('id');
+        if (!id) return '';
+        const label = document.querySelector(`label[for="${id}"]`);
+        return label ? label.textContent?.toLowerCase() || '' : '';
+      }, select);
+
+      const combinedText = `${id} ${name} ${labelText}`.toLowerCase();
+
+      if (combinedText.includes('gender') || combinedText.includes('race') || combinedText.includes('veteran') || combinedText.includes('disability') || combinedText.includes('eeo') || combinedText.includes('voluntary')) {
+        const options = await select.$$('option');
+        for (const option of options) {
+          const text = await option.textContent() || '';
+          const lowerText = text.toLowerCase();
+          if (lowerText.includes('decline') || lowerText.includes('prefer not') || lowerText.includes('wish not')) {
+             const value = await option.getAttribute('value');
+             if (value) {
+                await select.selectOption(value);
+             }
+             break;
+          }
+        }
+      }
+    }
+
     await this.assertNoUnknownRequiredFields(browserPage);
   }
 

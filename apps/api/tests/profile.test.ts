@@ -22,13 +22,22 @@ test('profile endpoints', async (t) => {
       method: 'PUT',
       url: '/api/profile',
       headers: { cookie },
-      payload: { name: 'John Doe', phone: '1234567890' },
+      payload: {
+        name: 'John Doe',
+        phone: '1234567890',
+        gender: 'male',
+        dateOfBirth: '18 February 2004',
+        alternatePhone: '9307337956'
+      },
     });
 
     assert.strictEqual(response.statusCode, 200);
     const body = JSON.parse(response.payload);
     assert.strictEqual(body.name, 'John Doe');
     assert.strictEqual(body.phone, '1234567890');
+    assert.strictEqual(body.gender, 'male');
+    assert.strictEqual(body.dateOfBirth, '18 February 2004');
+    assert.strictEqual(body.alternatePhone, '9307337956');
   });
 
   await t.test('get profile should return updated data', async () => {
@@ -41,6 +50,9 @@ test('profile endpoints', async (t) => {
     assert.strictEqual(response.statusCode, 200);
     const body = JSON.parse(response.payload);
     assert.strictEqual(body.name, 'John Doe');
+    assert.strictEqual(body.gender, 'male');
+    assert.strictEqual(body.dateOfBirth, '18 February 2004');
+    assert.strictEqual(body.alternatePhone, '9307337956');
   });
 
   // Cleanup
