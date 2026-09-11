@@ -11,6 +11,9 @@ export default function ProfileForm() {
     linkedin: '',
     github: '',
     portfolio: '',
+    gender: '',
+    dateOfBirth: '',
+    alternatePhone: '',
   });
 
   const { data: profile } = useQuery({
@@ -28,6 +31,9 @@ export default function ProfileForm() {
         linkedin?: string;
         github?: string;
         portfolio?: string;
+        gender?: string;
+        dateOfBirth?: string;
+        alternatePhone?: string;
       };
       setFormData({
         name: p.name || '',
@@ -36,6 +42,9 @@ export default function ProfileForm() {
         linkedin: p.linkedin || '',
         github: p.github || '',
         portfolio: p.portfolio || '',
+        gender: p.gender || '',
+        dateOfBirth: p.dateOfBirth || '',
+        alternatePhone: p.alternatePhone || '',
       });
     }
   }, [profile]);
@@ -87,6 +96,18 @@ export default function ProfileForm() {
             <div>
             <label className="block text-sm font-medium text-gray-700">Portfolio</label>
             <input type="text" name="portfolio" value={formData.portfolio} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" />
+            </div>
+            <div>
+            <label className="block text-sm font-medium text-gray-700">Gender</label>
+            <input type="text" name="gender" value={formData.gender} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" />
+            </div>
+            <div>
+            <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+            <input type="text" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" />
+            </div>
+            <div>
+            <label className="block text-sm font-medium text-gray-700">Alternate Phone</label>
+            <input type="text" name="alternatePhone" value={formData.alternatePhone} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" />
             </div>
         </div>
         <button type="submit" className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">

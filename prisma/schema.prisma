@@ -30,6 +30,9 @@ model CandidateProfile {
   linkedin           String?
   github             String?
   portfolio          String?
+  gender             String?
+  dateOfBirth        String?
+  alternatePhone     String?
   education          Json?
   experience         Json?
   skills             Json?
