@@ -29,7 +29,7 @@ export async function downloadResumeFromS3(applicationId: number, fileUrl: strin
     }
 
     // Node.js typings for AWS SDK v3 stream
-    await pipeline(response.Body as any, fs.createWriteStream(tempResumePath));
+    await pipeline(response.Body as unknown as NodeJS.ReadableStream, fs.createWriteStream(tempResumePath));
     return tempResumePath;
   } catch (err) {
     throw new Error(`Failed to download resume from S3: ${err instanceof Error ? err.message : String(err)}`);

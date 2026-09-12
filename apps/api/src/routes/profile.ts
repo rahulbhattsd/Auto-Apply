@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { prisma } from '@autoapply/database';
+import { prisma, Prisma } from '@autoapply/database';
 import { verifyToken } from '../middleware/auth';
 
 const text = z.string().trim().min(1);
@@ -96,11 +96,11 @@ export default async function profileRoutes(fastify: FastifyInstance) {
           maximumSalary: data.maximumSalary ?? null,
           workAuthorization: data.workAuthorization ?? null,
           noticePeriod: data.noticePeriod ?? null,
-          education: data.education === undefined ? null : (data.education ?? []) as any,
-          experience: data.experience === undefined ? null : (data.experience ?? []) as any,
-          skills: data.skills === undefined ? null : (data.skills ?? []) as any,
-          projects: data.projects === undefined ? null : (data.projects ?? []) as any,
-          certifications: data.certifications === undefined ? null : (data.certifications ?? []) as any,
+          education: data.education === undefined ? Prisma.DbNull : (data.education ?? []) as Prisma.InputJsonValue,
+          experience: data.experience === undefined ? Prisma.DbNull : (data.experience ?? []) as Prisma.InputJsonValue,
+          skills: data.skills === undefined ? Prisma.DbNull : (data.skills ?? []) as Prisma.InputJsonValue,
+          projects: data.projects === undefined ? Prisma.DbNull : (data.projects ?? []) as Prisma.InputJsonValue,
+          certifications: data.certifications === undefined ? Prisma.DbNull : (data.certifications ?? []) as Prisma.InputJsonValue,
       };
 
       const profile = await prisma.candidateProfile.upsert({

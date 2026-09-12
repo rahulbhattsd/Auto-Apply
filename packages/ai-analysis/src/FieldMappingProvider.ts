@@ -38,7 +38,7 @@ export class FieldMappingProvider {
     return this.client;
   }
 
-  async mapFields(fields: FormField[], candidateData: any): Promise<FieldMappingResult> {
+  async mapFields(fields: FormField[], candidateData: unknown): Promise<FieldMappingResult> {
     const systemPrompt = `You are an expert AI assistant that helps automate job applications by mapping known candidate profile data to form fields on a career page.
 Your task is to analyze a list of form fields and the candidate's profile, and output ONLY a valid JSON object matching the following schema:
 {
