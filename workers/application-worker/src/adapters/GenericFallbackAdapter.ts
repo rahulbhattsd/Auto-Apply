@@ -12,19 +12,19 @@ type CandidateProfileForApplication = {
   user?: {
     email?: string | null;
   } | null;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export class GenericFallbackAdapter implements ApplicationAdapter {
   private fieldMappingProvider = new FieldMappingProvider();
 
-  canHandle(_url: string): boolean {
+  canHandle(): boolean {
     return true; // Fallback handles everything else
   }
 
-  async inspect(page: unknown, _url: string): Promise<Record<string, unknown>> {
+  async inspect(page: unknown, url: string): Promise<Record<string, unknown>> {
     const browserPage = page as Page;
-    await browserPage.goto(_url, { waitUntil: 'networkidle' });
+    await browserPage.goto(url, { waitUntil: 'networkidle' });
 
     const captchaFrames = await browserPage.$$('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="cloudflare"]');
     if (captchaFrames.length > 0) {
@@ -163,11 +163,11 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
        if (fileInput) {
           await fileInput.setInputFiles(resumePath, { timeout: 5000 });
        }
-    } catch (e) {
+    } catch {
        console.log('No file input found or failed to upload resume.');
     }
 
-    await this.assertNoUnknownRequiredFields(browserPage, inputs);
+    await this.assertNoUnknownRequiredFields(browserPage);
   }
 
   async submit(page: unknown): Promise<SubmissionResult> {
@@ -204,7 +204,7 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
     }
   }
 
-  private async assertNoUnknownRequiredFields(page: Page, _inputs: FormField[]) {
+  private async assertNoUnknownRequiredFields(page: Page) {
     const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
       elements
         .filter((element) => {

@@ -32,7 +32,7 @@ export class GreenhouseJobSource implements JobSource {
       if (!response.ok) {
         throw new Error(`Greenhouse API failed with status ${response.status}`);
       }
-      const data = await response.json() as any;
+      const data = await response.json() as { jobs?: Array<{ id: string | number, title: string, absolute_url: string, location?: { name?: string }, departments?: Array<{ name?: string }>, content?: string, updated_at?: string }> };
       const rawJobs = data.jobs || [];
 
       const results: JobResult[] = [];

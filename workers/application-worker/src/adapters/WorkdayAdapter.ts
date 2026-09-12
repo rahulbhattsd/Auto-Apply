@@ -90,7 +90,7 @@ export class WorkdayAdapter implements ApplicationAdapter {
           // Check if file is already uploaded, not strictly necessary if we can't tell, but safe to attempt
           try {
              await fileInput.setInputFiles(resumePath, { timeout: 2000 });
-          } catch (e) {
+          } catch {
              // Ignore error if file input is obscured or already has a file
           }
       }

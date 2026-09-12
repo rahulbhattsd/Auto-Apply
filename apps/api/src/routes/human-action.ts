@@ -32,7 +32,7 @@ export default async function humanActionRoutes(fastify: FastifyInstance) {
       const connectionInfo = JSON.parse(connectionInfoStr);
 
       return reply.send({ success: true, connection: connectionInfo, token });
-    } catch (e) {
+    } catch {
       return reply.status(401).send({ success: false, error: 'Invalid or expired token' });
     }
   });
@@ -54,7 +54,7 @@ export default async function humanActionRoutes(fastify: FastifyInstance) {
       proxy.on('close', () => socket.close());
       socket.on('close', () => proxy.close());
       proxy.on('error', (err) => { req.log.error(err); socket.close(); });
-    } catch (e) {
+    } catch {
       socket.close(1008, 'Invalid token');
     }
   });

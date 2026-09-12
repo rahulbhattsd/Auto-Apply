@@ -32,7 +32,7 @@ export class LeverJobSource implements JobSource {
       if (!response.ok) {
         throw new Error(`Lever API failed with status ${response.status}`);
       }
-      const data = await response.json() as any[];
+      const data = await response.json() as Array<{ id: string | number, text: string, hostedUrl: string, categories?: { location?: string, department?: string }, descriptionPlain?: string, description?: string, createdAt?: string | number }>;
 
       const results: JobResult[] = [];
       for (const job of data) {

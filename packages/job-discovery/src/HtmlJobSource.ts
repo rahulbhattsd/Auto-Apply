@@ -98,7 +98,7 @@ export class HtmlJobSource implements JobSource {
 
                 if (new URL(validUrl).hostname !== new URL(this.endpoint).hostname) continue;
 
-            } catch (e) {
+            } catch {
                 // Invalid URL
                 continue;
             }

@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => {
   return {
     envDir: '../..',
     plugins: [react()],
+    build: {
+      target: 'esnext',
+    },
     server: {
       proxy: {
         '/api': {
