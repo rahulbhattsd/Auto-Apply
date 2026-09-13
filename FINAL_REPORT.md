@@ -1,29 +1,49 @@
-# Final Verification Report
+# Phase 5 Final Report
 
-## Major Fixes Implemented
-1. **Real Job Discovery**: Updated `HttpJsonJobSource` to handle `AbortController` timeouts, structured retry logic with exponential backoff, and robust `zod.safeParse` for gracefully skipping malformed jobs.
-2. **AI Analysis & Resume Safety**: Strengthened `TailoredResumeSchema` and implemented explicit normalization checking inside `ResumeWorker` to detect and safely throw on AI hallucinated skills/companies/education. Transitions the app to `NEEDS_HUMAN` upon detection.
-3. **Application State Machine**: Removed unsafe `/mark-completed` jumping directly to `VERIFIED`. Introduced `/submit-evidence` which pushes to `SUBMITTED`, triggering the standard `VerificationWorker`. UI updated.
-4. **Verification Evidence**: `VerificationWorker` strictly validates payload formats.
-5. **ATS Adapters / Playwright**: Added strict 5s timeouts via passing `{ timeout: 5000 }` directly to all Playwright actions (`waitForSelector`, `click`, `fill`) inside `GreenhouseAdapter` and `LeverAdapter`. Prevented duplicate filling logic by checking the page content (`textContent`) and `url()` for success signals early. Handled specific `MISSING_SELECTOR` scenarios properly.
-6. **Idempotency & Concurrency**: Added database status checks inside `ApplicationWorker` to verify the application isn't already `SUBMITTED`. Validated atomic concurrent behavior in application generation.
-7. **Worker Reliability**: Refactored `scripts/start-workers.cjs` and `scripts/start-web.cjs`/`scripts/start-background.cjs` into bounded backoff supervisors to contain crash loops instead of wiping out the full environment.
-8. **Render Deployment**: Split the deployment in `render.yaml` into a generic `web` service and a distinct `worker` background service, solving resource exhaustion.
-9. **Scheduler**: Implemented distributed Redis `NX` locks to `startScheduler` to ensure duplicate runs don't fire concurrently across multiple app instances.
-10. **Profile Security**: Strengthened endpoints utilizing `z.strict()` and filtered out unauthenticated leakage.
+## Architecture Changes
+- Implemented `ApplicationOutcome` to create an explicit, strongly-typed result model for form operations rather than loose string errors.
+- Introduced a central `FormCompletionEngine` return surface that orchestrates between inputs, required checks, captcha handling, and navigation determination cleanly.
+- Transitioned `GenericFallbackAdapter` to correctly proxy the outcome from the intelligence engine instead of implementing a false `assertNoUnknownRequiredFields` which breaks ordering.
+- Extracted navigation click (`FINAL_SUBMIT`) from `ApplicationActionPlanner` so the orchestrator retains total control over the single final submission event.
+- Ensured bounded page iteration exists natively inside the adapter `fill()` method, enforcing a maximum iterations count.
 
-## Tests
-- Comprehensive unit tests successfully added and executed for:
-  - Configuration handling.
-  - LLM hallucination and Prompt Injection safety.
-  - Adapter missing selectors/timeouts.
-  - Concurrency/daily rate limits via `Promise.all`.
-  - Redis Scheduler distributed locking behavior.
-  - Application Engine allowed state transition maps.
+## Authoritative Submission Flow
+1. Worker triggers `adapter.fill()`.
+2. Bounded iteration occurs calling `engine.processPage()`.
+3. Validations are evaluated. Missing inputs become `BLOCKED_REQUIRED_FIELD` outcome, and CAPTCHA/MFA return `HUMAN_VERIFICATION_REQUIRED`.
+4. Page state yields either `CONTINUE` (triggering next iteration loop) or `READY_TO_SUBMIT`.
+5. Worker handles final state correctly and calls `adapter.submit()` exactly once with the provided locator.
+6. The submit function handles confirmation wait.
 
-## Production Status
-- Completely removes mock job integrations via the env checks.
-- Codebase is production-ready based on current metrics.
+## Exact Application Outcome/State Model
+```ts
+export type ApplicationOutcome =
+  | { type: 'CONTINUE' }
+  | { type: 'READY_TO_SUBMIT'; submitLocator?: string }
+  | { type: 'BLOCKED_REQUIRED_FIELD'; fields: string[] }
+  | { type: 'HUMAN_VERIFICATION_REQUIRED'; reason: string }
+  | { type: 'NO_ACTION' }
+  | { type: 'FAILED'; reason: string }
+  | { type: 'SUBMITTED'; evidence: unknown }
+  | { type: 'CONFIRMED'; evidence: unknown };
+```
 
-## Manual Actions
-None required out of the box outside of deploying the updated `render.yaml` infrastructure split.
+## Known Limitations
+- The integration tests for generic multi-page navigation are simplified local mocks because we avoid live testing third-party environments in CI, but the architectural foundation correctly prevents infinite loops via `maxPages`.
+- `GROQ_API_KEY` was mocked to preserve test functionality when testing the generic fallback loop inside playwright without external dependency connections.
+- Application error throwing from intelligence has been moved to robust returned type checking (`ApplicationOutcome`), meaning catching is not relied upon for core control-flow logic anymore.
+
+## Test Coverage
+Integration coverage has been restored in `workers/application-worker/tests/generic-adapter.test.ts` via playwright running over explicitly bounded scenarios:
+- `bounded page iteration`
+- `multi-page progression (NEXT button)`
+- `exactly one final submission click`
+- `upload failure does not become success`
+- `unknown required field correctly mapped to BLOCKED_REQUIRED_FIELD outcome`
+- `CAPTCHA/MFA handoff outcome returning HUMAN_VERIFICATION_REQUIRED`
+- `no duplicate submission if already submitted (based on confirmation URL)`
+
+Additional unit tests added for `ApplicationOutcome` model and `ActionExecutor` upload failure.
+
+- Commit SHA: `5097f92622e0fac4c40c0ec05111812db9b7baee`
+- Exact starting point for Phase 6: Phase 5 completely sets up the form submission engine orchestration layer.
