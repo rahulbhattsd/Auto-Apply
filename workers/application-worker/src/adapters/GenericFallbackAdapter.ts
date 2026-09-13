@@ -1,9 +1,6 @@
 import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
 import type { Page } from 'playwright';
-import { FieldMappingProvider, FormField } from '@autoapply/ai-analysis';
-import { connection } from '@autoapply/queue';
-import { env } from '@autoapply/config';
-import crypto from 'crypto';
+import { FormField, FormCompletionEngine } from '@autoapply/ai-analysis';
 
 type CandidateProfileForApplication = {
   name?: string | null;
@@ -16,8 +13,6 @@ type CandidateProfileForApplication = {
 };
 
 export class GenericFallbackAdapter implements ApplicationAdapter {
-  private fieldMappingProvider = new FieldMappingProvider();
-
   canHandle(): boolean {
     return true; // Fallback handles everything else
   }
@@ -85,89 +80,15 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
 
     const candidate = profile as CandidateProfileForApplication;
 
-    // Extract fields again just to be sure we have the current state
-    const { inputs } = await this.inspect(page, url) as { inputs: FormField[] };
+    // Use the new FormCompletionEngine from Phase 3 intelligence layer
+    const engine = new FormCompletionEngine();
 
-    if (inputs.length === 0) {
-      console.log('No form fields found to fill.');
-      return;
-    }
-
-    const formSignature = crypto.createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
-    const cacheKey = `ai-mapping:${formSignature}`;
-
-    let mapping: Record<string, string> | null = null;
-
-    const cached = await connection.get(cacheKey);
-    if (cached) {
-      mapping = JSON.parse(cached);
-    } else {
-      // Rate limiting check
-      const dateStr = new Date().toISOString().split('T')[0];
-      const rateLimitKey = `ai-mapping-limit:${dateStr}`;
-      const count = await connection.incr(rateLimitKey);
-
-      if (count === 1) {
-        await connection.expire(rateLimitKey, 86400); // Expire after 24 hours
-      }
-
-      if (count > env.MAX_APPLICATIONS_PER_DAY) {
-        throw new Error(`Exceeded generic adapter AI mapping limit for today (${env.MAX_APPLICATIONS_PER_DAY})`);
-      }
-
-      const result = await this.fieldMappingProvider.mapFields(inputs, candidate);
-      mapping = result.mapping;
-
-      await connection.set(cacheKey, JSON.stringify(mapping), 'EX', 86400); // Cache for 24h
-    }
-
-    if (!mapping) {
-      throw new Error('Failed to generate or retrieve field mapping');
-    }
-
-    // Hallucination Guard: Filter out mapped values that aren't derived from candidate data
-    const candidateDataString = JSON.stringify(candidate).toLowerCase();
-    const validatedMapping: Record<string, string> = {};
-
-    for (const [selector, value] of Object.entries(mapping)) {
-      if (typeof value !== 'string') continue;
-
-      if (!value.trim()) continue;
-
-      if (candidateDataString.includes(value.toLowerCase())) {
-        validatedMapping[selector] = value;
-      } else {
-        console.warn(`Hallucination Guard: Rejected mapping for selector '${selector}' with value '${value}' (not found in candidate profile)`);
-      }
-    }
-
-    // Apply mappings
-    for (const [selector, value] of Object.entries(validatedMapping)) {
-      try {
-        const element = await browserPage.$(selector);
-        if (element) {
-          const tagName = await element.evaluate(el => el.tagName.toLowerCase());
-          if (tagName === 'select') {
-            await browserPage.selectOption(selector, value, { timeout: 2000 });
-          } else {
-             await browserPage.fill(selector, value, { timeout: 2000 });
-          }
-        }
-      } catch (e) {
-        console.warn(`Failed to fill selector ${selector}:`, e);
-      }
-    }
-
-    try {
-       const fileInput = await browserPage.$('input[type="file"]');
-       if (fileInput) {
-          await fileInput.setInputFiles(resumePath, { timeout: 5000 });
-       }
-    } catch {
-       console.log('No file input found or failed to upload resume.');
-    }
-
+    // Final check to preserve legacy safety guards BEFORE we process and potentially navigate away
     await this.assertNoUnknownRequiredFields(browserPage);
+
+    // We run the engine to process the page
+    // The engine handles observation, mapping, execution, and verification internally
+    await engine.processPage(browserPage, candidate, resumePath);
   }
 
   async submit(page: unknown): Promise<SubmissionResult> {
