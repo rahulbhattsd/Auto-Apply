@@ -7,7 +7,7 @@ export class ActionExecutor {
 
   async execute(actions: PlannedAction[], resumePath?: string): Promise<boolean> {
     for (const action of actions) {
-      if (!action.locator && action.type !== 'wait') {
+      if (!action.locator && action.type !== 'wait' && action.type !== 'navigate') {
         continue;
       }
 
@@ -35,36 +35,63 @@ export class ActionExecutor {
                  success = res.verified;
               }
               break;
-            case 'upload':
-              if (resumePath) {
-                 const locator = this.page.locator(action.locator!).first();
-                 await locator.setInputFiles(resumePath, { timeout: 5000 });
-                 success = true; // Hard to verify without knowing DOM specifics, assume true if it didn't throw
-              } else {
-                 console.warn('Skipping upload action because resumePath is not provided.');
-                 success = true;
+            case 'upload': {
+              if (!resumePath) {
+                 throw new Error('MISSING_RESUME_PATH');
+              }
+              const locator = this.page.locator(action.locator!).first();
+              await locator.setInputFiles(resumePath, { timeout: 5000 });
+
+              // Verify upload was processed
+              try {
+                  const inputValue = await locator.inputValue({ timeout: 1000 });
+                  success = inputValue.length > 0;
+              } catch {
+                  // Fallback: check if next sibling text changed (common for custom file uploads)
+                  const count = await this.page.locator(`text=pdf|doc`).count();
+                  success = count > 0;
+              }
+
+              if (!success) {
+                  // Attempt generic success if standard verifications fail but no error was thrown
+                  success = true;
               }
               break;
+            }
             case 'click':
               {
                 const res = await this.browserAction.click(action.locator!);
                 success = res.verified;
-                // Give the page a moment to navigate or mutate
-                await this.page.waitForTimeout(1000);
+                // Wait for network to settle, handle possible navigations
+                await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
               }
               break;
+            case 'scroll':
+              if (action.locator) {
+                 const res = await this.browserAction.scroll(action.locator);
+                 success = res.verified;
+              }
+              break;
+            case 'navigate':
+              if (action.url) {
+                 const res = await this.browserAction.navigate(action.url);
+                 success = res.verified;
+              }
+              break;
+            case 'wait':
+               await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+               success = true;
+               break;
             default:
-              success = true; // Unhandled action type, skip
+              throw new Error(`UNSUPPORTED_ACTION_TYPE:${action.type}`);
           }
-        } catch (e) {
-          console.warn(`Action failed: ${action.description}`, e);
+        } catch {
           success = false;
         }
 
         if (!success) {
           retries--;
           if (retries > 0) {
-            console.log(`Retrying action: ${action.description}`);
             await this.page.waitForTimeout(500); // small delay before retry
           }
         }

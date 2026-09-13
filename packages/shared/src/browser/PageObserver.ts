@@ -32,13 +32,16 @@ export class PageObserver {
         let type: PageField['type'] = 'text';
         let options: string[] | undefined;
         let value: string | string[] | boolean | undefined;
+        let htmlValue: string | undefined;
 
         if (el instanceof HTMLInputElement) {
           type = el.type === 'file' ? 'file' : el.type === 'checkbox' ? 'checkbox' : el.type === 'radio' ? 'radio' : 'text';
           if (el.type === 'checkbox' || el.type === 'radio') {
             value = el.checked;
+            htmlValue = el.value;
           } else {
             value = el.value;
+            htmlValue = el.value;
           }
         } else if (el instanceof HTMLSelectElement) {
           type = 'select';
@@ -47,6 +50,7 @@ export class PageObserver {
         } else if (el instanceof HTMLTextAreaElement) {
           type = 'text';
           value = el.value;
+          htmlValue = el.value;
         }
 
         const name = el.getAttribute('name') || el.id || '';
@@ -54,6 +58,22 @@ export class PageObserver {
         if (el.id) {
           const labelEl = document.querySelector(`label[for="${el.id}"]`);
           if (labelEl) label = labelEl.textContent?.trim() || '';
+        }
+        // Fallback for checkbox/radio label
+        if (!label && (type === 'checkbox' || type === 'radio')) {
+           const parentLabel = el.closest('label');
+           if (parentLabel && parentLabel.textContent) {
+               label = parentLabel.textContent.trim();
+           } else {
+               // Next sibling text node heuristic
+               let nextNode = el.nextSibling;
+               while (nextNode && nextNode.nodeType !== Node.TEXT_NODE && nextNode.nodeType !== Node.ELEMENT_NODE) {
+                   nextNode = nextNode.nextSibling;
+               }
+               if (nextNode && nextNode.nodeType === Node.TEXT_NODE && nextNode.textContent?.trim()) {
+                   label = nextNode.textContent.trim();
+               }
+           }
         }
 
         const field: PageField = {
@@ -65,12 +85,9 @@ export class PageObserver {
           locator: generateLocator(el)
         };
 
-        if (value !== undefined) {
-          field.value = value;
-        }
-        if (options !== undefined) {
-          field.options = options;
-        }
+        if (value !== undefined) field.value = value;
+        if (htmlValue !== undefined) field.htmlValue = htmlValue;
+        if (options !== undefined) field.options = options;
 
         fields.push(field);
       });
