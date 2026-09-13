@@ -1,4 +1,4 @@
-import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult, ApplicationOutcome } from '@autoapply/shared';
 import type { Page, Frame } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -45,7 +45,7 @@ export class DarwinboxAdapter implements ApplicationAdapter {
     return { inputs };
   }
 
-  async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
+  async fill(page: unknown, profile: unknown, resumePath: string): Promise<ApplicationOutcome> {
     const browserPage = page as Page;
     const candidate = profile as CandidateProfileForApplication;
 
@@ -73,6 +73,8 @@ export class DarwinboxAdapter implements ApplicationAdapter {
     await this.handleCTCAndNoticePeriod(frame, candidate);
 
     await this.assertNoUnknownRequiredFields(frame);
+
+    return { type: 'READY_TO_SUBMIT', submitLocator: 'button[type="submit"], input[type="submit"]' };
   }
 
   private async handleCTCAndNoticePeriod(frame: Page | Frame, candidate: CandidateProfileForApplication) {
@@ -99,12 +101,15 @@ export class DarwinboxAdapter implements ApplicationAdapter {
       }
   }
 
-  async submit(page: unknown): Promise<SubmissionResult> {
+  async submit(page: unknown, submitLocator?: string): Promise<SubmissionResult> {
     const browserPage = page as Page;
     const frames = browserPage.frames();
     const frame = frames.find(f => f.url().includes('darwinbox')) || browserPage;
 
-    await frame.click('button[type="submit"], input[type="submit"]', { timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:submit_button'); });
+    if (!submitLocator) {
+      submitLocator = 'button[type="submit"], input[type="submit"]';
+    }
+    await frame.click(submitLocator, { timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:submit_button'); });
 
     try {
         await browserPage.waitForURL(/success|confirmation/i, { timeout: 10000 });

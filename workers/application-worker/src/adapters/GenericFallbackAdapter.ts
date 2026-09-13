@@ -1,4 +1,4 @@
-import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult, ApplicationOutcome } from '@autoapply/shared';
 import type { Page } from 'playwright';
 import { FormField, FormCompletionEngine } from '@autoapply/ai-analysis';
 
@@ -69,13 +69,13 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
     return { inputs };
   }
 
-  async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
+  async fill(page: unknown, profile: unknown, resumePath: string): Promise<ApplicationOutcome> {
     const browserPage = page as Page;
     const url = browserPage.url();
 
     // Idempotency: Prevent duplicate filling if already on success page
     if (url.includes('confirmation') || url.includes('success')) {
-        return;
+        return { type: 'READY_TO_SUBMIT' };
     }
 
     const candidate = profile as CandidateProfileForApplication;
@@ -83,15 +83,23 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
     // Use the new FormCompletionEngine from Phase 3 intelligence layer
     const engine = new FormCompletionEngine();
 
-    // Final check to preserve legacy safety guards BEFORE we process and potentially navigate away
-    await this.assertNoUnknownRequiredFields(browserPage);
+    const maxPages = 10;
+    for (let i = 0; i < maxPages; i++) {
+        // We run the engine to process the page
+        // The engine handles observation, mapping, execution, and verification internally
+        const outcome = await engine.processPage(browserPage, candidate, resumePath);
 
-    // We run the engine to process the page
-    // The engine handles observation, mapping, execution, and verification internally
-    await engine.processPage(browserPage, candidate, resumePath);
+        if (outcome.type === 'CONTINUE') {
+            continue;
+        }
+
+        return outcome;
+    }
+
+    return { type: 'FAILED', reason: 'EXCEEDED_MAX_PAGES' };
   }
 
-  async submit(page: unknown): Promise<SubmissionResult> {
+  async submit(page: unknown, submitLocator?: string): Promise<SubmissionResult> {
     const browserPage = page as Page;
 
     const initialUrl = browserPage.url();
@@ -99,12 +107,11 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
         return { confirmed: true, evidence: { confirmationUrl: initialUrl } };
     }
 
-    const submitButtons = await browserPage.$$('button[type="submit"], input[type="submit"]');
-    if (submitButtons.length > 0) {
-      await submitButtons[0]?.click({ timeout: 5000 });
-    } else {
+    if (!submitLocator) {
        throw new Error('MISSING_SELECTOR:submit_button');
     }
+
+    await browserPage.click(submitLocator, { timeout: 5000 });
 
     try {
         const confirmation = await browserPage.waitForSelector('text=/thank you|success|application submitted/i', { timeout: 10000 });
@@ -122,24 +129,6 @@ export class GenericFallbackAdapter implements ApplicationAdapter {
             return { confirmed: true, evidence: { confirmationUrl: url } };
         }
         return { confirmed: false };
-    }
-  }
-
-  private async assertNoUnknownRequiredFields(page: Page) {
-    const missing = await page.$$eval('input[required], select[required], textarea[required]', (elements) =>
-      elements
-        .filter((element) => {
-          const input = element as HTMLInputElement;
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            return !input.checked;
-          }
-          return input.type !== 'hidden' && !input.value;
-        })
-        .map((element) => (element.getAttribute('name') || element.id || element.getAttribute('aria-label') || 'unknown'))
-    );
-
-    if (missing.length > 0) {
-      throw new Error(`UNKNOWN_REQUIRED_FIELD:${missing.join(',')}`);
     }
   }
 }
