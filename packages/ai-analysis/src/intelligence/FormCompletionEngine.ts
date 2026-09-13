@@ -1,6 +1,6 @@
 import { Page } from 'playwright';
-import { PageObserver } from '@autoapply/shared/src/browser/PageObserver.js';
-import { BrowserAction } from '@autoapply/shared/src/browser/BrowserAction.js';
+import { PageObserver } from '@autoapply/shared';
+import { BrowserAction } from '@autoapply/shared';
 import { CandidateContext } from './CandidateKnowledgeResolver.js';
 import { SemanticFieldMapper } from './SemanticFieldMapper.js';
 import { ApplicationActionPlanner } from './ApplicationActionPlanner.js';

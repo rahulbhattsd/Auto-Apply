@@ -1,4 +1,4 @@
-import { PageField } from '@autoapply/shared/src/browser/types.js';
+import { PageField } from '@autoapply/shared';
 import { CandidateContext, CandidateKnowledgeResolver } from './CandidateKnowledgeResolver.js';
 import { QuestionClassifier } from './QuestionClassifier.js';
 import { FieldMapping, ConfidenceLevel } from './types.js';

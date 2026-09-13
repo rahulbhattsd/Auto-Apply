@@ -1,4 +1,4 @@
-import { BrowserAction } from '@autoapply/shared/src/browser/BrowserAction.js';
+import { BrowserAction } from '@autoapply/shared';
 import { PlannedAction } from './types.js';
 import { Page } from 'playwright';
 

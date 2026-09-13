@@ -1,4 +1,4 @@
-import { PageObservation, PageButton } from '@autoapply/shared/src/browser/types.js';
+import { PageObservation, PageButton } from '@autoapply/shared';
 import { FieldMapping, PlannedAction } from './types.js';
 
 export class ApplicationActionPlanner {
