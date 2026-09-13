@@ -8,36 +8,23 @@ test('ApplicationActionPlanner', async (t) => {
   const planner = new ApplicationActionPlanner();
 
   await t.test('plans actions based on mappings', () => {
-    const observation: PageObservation = { url: 'http://test', title: 'test', fields: [], buttons: [], links: [] };
+    const observation: PageObservation = { url: 'http://test', title: 'test', buttons: [], links: [], fields: [
+       { type: 'text', name: 'name', locator: '#name', disabled: false, required: true },
+       { type: 'file', name: 'resume', locator: '#resume', disabled: false, required: true }
+    ] };
     const mappings: FieldMapping[] = [
       { fieldLocator: '#name', semanticMeaning: 'PERSONAL_NAME', candidateValue: 'Alice', confidence: 'HIGH', source: 'profile', action: 'fill' },
       { fieldLocator: '#resume', semanticMeaning: 'FILE_RESUME', candidateValue: null, confidence: 'HIGH', source: 'inferred', action: 'upload' }
     ];
 
-    const actions = planner.plan(observation, mappings);
-    assert.strictEqual(actions.length, 2);
-    assert.strictEqual(actions[0].type, 'fill');
-    assert.strictEqual(actions[0].locator, '#name');
-    assert.strictEqual(actions[0].value, 'Alice');
+    const result = planner.plan(observation, mappings);
+    assert.strictEqual(result.actions.length, 2);
+    assert.strictEqual(result.actions[0].type, 'fill');
+    assert.strictEqual(result.actions[0].locator, '#name');
+    assert.strictEqual(result.actions[0].value, 'Alice');
 
-    assert.strictEqual(actions[1].type, 'upload');
-    assert.strictEqual(actions[1].locator, '#resume');
-  });
-
-  await t.test('blocks submission on unresolved required fields', () => {
-    const observation: PageObservation = {
-      url: 'http://test', title: 'test', links: [], buttons: [],
-      fields: [
-        { type: 'text', name: 'salary', required: true, locator: '#salary', disabled: false }
-      ]
-    };
-    const mappings: FieldMapping[] = [
-      { fieldLocator: '#salary', semanticMeaning: 'PREFERENCE_SALARY', candidateValue: null, confidence: 'LOW', source: 'unknown', action: 'fill' }
-    ];
-
-    assert.throws(() => {
-      planner.plan(observation, mappings);
-    }, /UNKNOWN_REQUIRED_FIELD/);
+    assert.strictEqual(result.actions[1].type, 'upload');
+    assert.strictEqual(result.actions[1].locator, '#resume');
   });
 
   await t.test('prefers NEXT button over SUBMIT', () => {
@@ -49,9 +36,10 @@ test('ApplicationActionPlanner', async (t) => {
       ]
     };
 
-    const actions = planner.plan(observation, []);
-    assert.strictEqual(actions.length, 1);
-    assert.strictEqual(actions[0].type, 'click');
-    assert.strictEqual(actions[0].locator, '#next');
+    const result = planner.plan(observation, []);
+    assert.strictEqual(result.actions.length, 1);
+    assert.strictEqual(result.actions[0].type, 'click');
+    assert.strictEqual(result.actions[0].locator, '#next');
+    assert.strictEqual(result.navigation, 'NEXT');
   });
 });

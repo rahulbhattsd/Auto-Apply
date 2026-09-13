@@ -13,6 +13,7 @@ export interface PageField {
   label?: string;
   required: boolean;
   value?: string | string[] | boolean;
+  htmlValue?: string; // e.g. the value attribute for radio buttons
   options?: string[]; // for select/radio
   disabled: boolean;
   locator: string;

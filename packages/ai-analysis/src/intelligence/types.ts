@@ -50,7 +50,7 @@ export interface FieldMapping {
 }
 
 export interface PlannedAction {
-  type: 'fill' | 'select' | 'check' | 'upload' | 'click' | 'wait' | 'navigate';
+  type: 'fill' | 'select' | 'check' | 'upload' | 'click' | 'wait' | 'navigate' | 'scroll';
   locator?: string;
   value?: string | boolean;
   filePath?: string;

@@ -15,7 +15,7 @@ export class FormCompletionEngine {
     this.planner = new ApplicationActionPlanner();
   }
 
-  async processPage(page: Page, candidate: CandidateContext, resumePath?: string): Promise<{ isComplete: boolean }> {
+  async processPage(page: Page, candidate: CandidateContext, resumePath?: string): Promise<{ state: 'NEXT' | 'SUBMIT' | 'NO_ACTION' }> {
     const observer = new PageObserver(page);
     const browserAction = new BrowserAction(page);
     const executor = new ActionExecutor(browserAction, page);
@@ -34,28 +34,77 @@ export class FormCompletionEngine {
     }
 
     if (observation.fields.length === 0 && observation.buttons.length === 0) {
-       // Nothing to do
-       return { isComplete: true };
+       return { state: 'NO_ACTION' };
     }
 
     // Understanding & Mapping
     const mappings = await this.mapper.mapFields(observation.fields, candidate);
 
     // Planning
-    const actions = this.planner.plan(observation, mappings);
+    const { actions, navigation } = this.planner.plan(observation, mappings);
 
-    if (actions.length === 0) {
-       // Nothing to execute
-       return { isComplete: true };
+    // Execute Fill Actions (everything except navigation clicks)
+    const fillActions = actions.filter(a => a.type !== 'click');
+    const navActions = actions.filter(a => a.type === 'click');
+
+    if (fillActions.length > 0) {
+        await executor.execute(fillActions, resumePath);
     }
 
-    // Check if the last action is a final submit or just a next
-    const isFinalSubmit = actions.some(a => a.type === 'click' && a.description.toLowerCase().includes('final submit'));
+    // Re-observe state after fills
+    const postFillObservation = await observer.observe();
 
-    // Execution
-    await executor.execute(actions, resumePath);
+    // Validation Check: ensure no required fields are left unfilled
+    // A required field is unfilled if it's empty, or in a radio group where nothing is selected
+    const missingRequired: string[] = [];
 
-    // We only consider the application complete if we just clicked a final submit
-    return { isComplete: isFinalSubmit };
+    // Group fields by name to handle radio button groups properly
+    const fieldsByName = new Map<string, typeof postFillObservation.fields>();
+    for (const f of postFillObservation.fields) {
+        if (!fieldsByName.has(f.name)) {
+            fieldsByName.set(f.name, []);
+        }
+        fieldsByName.get(f.name)!.push(f);
+    }
+
+    for (const [name, fields] of fieldsByName.entries()) {
+        const isRequiredGroup = fields.some(f => f.required);
+        if (!isRequiredGroup) continue;
+
+        let hasValue = false;
+        for (const f of fields) {
+            if (f.type === 'checkbox' || f.type === 'radio') {
+                if (f.value === true) hasValue = true;
+            } else if (f.value !== undefined && String(f.value).trim() !== '') {
+                hasValue = true;
+            }
+        }
+
+        if (!hasValue) {
+            // Pick a label to report
+            const firstField = fields[0];
+            if (firstField) {
+                const labelToReport = firstField.label || name || firstField.locator;
+                missingRequired.push(labelToReport);
+            }
+        }
+    }
+
+    if (missingRequired.length > 0) {
+       throw new Error(`UNKNOWN_REQUIRED_FIELD:${missingRequired.join(',')}`);
+    }
+
+    // Execute Navigation Action
+    if (navActions.length > 0) {
+       await executor.execute(navActions);
+    }
+
+    if (navigation === 'FINAL_SUBMIT') {
+       return { state: 'SUBMIT' };
+    } else if (navigation === 'NEXT') {
+       return { state: 'NEXT' };
+    }
+
+    return { state: 'NO_ACTION' };
   }
 }

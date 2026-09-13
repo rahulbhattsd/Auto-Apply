@@ -2,19 +2,17 @@ import { PageObservation, PageButton } from '@autoapply/shared/src/browser/types
 import { FieldMapping, PlannedAction } from './types.js';
 
 export class ApplicationActionPlanner {
-  plan(observation: PageObservation, mappings: FieldMapping[]): PlannedAction[] {
+  plan(observation: PageObservation, mappings: FieldMapping[]): { actions: PlannedAction[], navigation: 'NEXT' | 'FINAL_SUBMIT' | 'NO_ACTION' } {
     const actions: PlannedAction[] = [];
-    const missingRequired: string[] = [];
 
     // Plan field interactions
     for (const mapping of mappings) {
       if (mapping.confidence === 'LOW' || mapping.confidence === 'UNKNOWN') {
-        const field = observation.fields.find(f => f.locator === mapping.fieldLocator);
-        if (field?.required) {
-           missingRequired.push(field.label || field.name || mapping.fieldLocator);
-        }
         continue; // Skip filling unknown fields
       }
+
+      const field = observation.fields.find(f => f.locator === mapping.fieldLocator);
+      if (!field) continue;
 
       if (mapping.action === 'upload' && mapping.semanticMeaning === 'FILE_RESUME') {
         actions.push({
@@ -24,14 +22,36 @@ export class ApplicationActionPlanner {
         });
       } else if (mapping.candidateValue !== null) {
         if (mapping.action === 'check') {
-           // Basic heuristic for boolean true/false or specific option checking
-           // In a full implementation, you'd find the exact radio/checkbox value matching candidateValue
-           actions.push({
-             type: 'check',
-             locator: mapping.fieldLocator,
-             value: true,
-             description: `Check field ${mapping.fieldLocator}`
-           });
+           const candidateStr = String(mapping.candidateValue).toLowerCase().trim();
+           let shouldCheck = false;
+
+           // If it's a strict boolean true
+           if (mapping.candidateValue === true || candidateStr === 'true' || candidateStr === 'yes') {
+              if (field.htmlValue?.toLowerCase() === 'true' || field.htmlValue?.toLowerCase() === 'yes' || !field.htmlValue) {
+                  shouldCheck = true;
+              }
+           }
+
+           // Match against HTML value or label
+           if (!shouldCheck && field.htmlValue) {
+               if (field.htmlValue.toLowerCase().trim() === candidateStr) {
+                   shouldCheck = true;
+               }
+           }
+           if (!shouldCheck && field.label) {
+               if (field.label.toLowerCase().trim().includes(candidateStr) || candidateStr.includes(field.label.toLowerCase().trim())) {
+                   shouldCheck = true;
+               }
+           }
+
+           if (shouldCheck) {
+               actions.push({
+                 type: 'check',
+                 locator: mapping.fieldLocator,
+                 value: true,
+                 description: `Check field ${mapping.fieldLocator}`
+               });
+           }
         } else {
            actions.push({
              type: mapping.action as PlannedAction['type'],
@@ -56,9 +76,7 @@ export class ApplicationActionPlanner {
       }
     }
 
-    if (missingRequired.length > 0) {
-      throw new Error(`UNKNOWN_REQUIRED_FIELD:${missingRequired.join(',')}`);
-    }
+    let navigation: 'NEXT' | 'FINAL_SUBMIT' | 'NO_ACTION' = 'NO_ACTION';
 
     // Prefer Next over Submit if both are present (multi-step form heuristic)
     if (nextBtn) {
@@ -67,12 +85,14 @@ export class ApplicationActionPlanner {
         locator: nextBtn.locator,
         description: `Click Next button: ${nextBtn.text}`
       });
+      navigation = 'NEXT';
     } else if (finalSubmitBtn) {
       actions.push({
         type: 'click',
         locator: finalSubmitBtn.locator,
         description: `Click Final Submit button: ${finalSubmitBtn.text}`
       });
+      navigation = 'FINAL_SUBMIT';
     } else {
       // Fallback: look for generic submit type button
       const fallback = observation.buttons.find(b => b.type === 'submit');
@@ -82,9 +102,10 @@ export class ApplicationActionPlanner {
             locator: fallback.locator,
             description: `Click generic submit button: ${fallback.text}`
          });
+         navigation = 'FINAL_SUBMIT'; // Assume generic submit is final if no Next exists
       }
     }
 
-    return actions;
+    return { actions, navigation };
   }
 }

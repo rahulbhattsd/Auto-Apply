@@ -20,6 +20,8 @@ export interface CandidateContext {
   remotePreference?: string | null;
   minimumSalary?: number | null;
   maximumSalary?: number | null;
+  noticePeriod?: string | null;
+  workAuthorization?: string | null;
   [key: string]: unknown;
 }
 
@@ -32,9 +34,6 @@ export interface ResolvedKnowledge {
 export class CandidateKnowledgeResolver {
   resolve(meaning: SemanticFieldMeaning, candidate: CandidateContext): ResolvedKnowledge {
     if (meaning.startsWith('VOLUNTARY_EEO')) {
-      // Hard rule: do not guess EEO questions. If we must map, return "Decline to answer"
-      // Wait, the prompt says "do NOT automatically answer voluntary EEO/diversity questions using sensitive profile information."
-      // The instructions say: "If a field asks for demographic data (like gender, race, veteran status, or disability status) AND is part of a voluntary self-identification, EEO, or diversity section, you MUST select "Decline to answer", "I prefer not to say", or equivalent. Do NOT use the candidate's stored demographic data for these fields."
       return { value: 'Decline to answer', confidence: 'HIGH', source: 'profile' };
     }
 
@@ -59,7 +58,6 @@ export class CandidateKnowledgeResolver {
       case 'PERSONAL_COUNTRY':
       case 'PREFERENCE_LOCATION':
         value = candidate.location ?? null;
-        // In a real system, you'd parse `candidate.location` to separate city/state/zip
         break;
       case 'LINK_LINKEDIN':
         value = candidate.linkedin ?? null;
@@ -74,17 +72,58 @@ export class CandidateKnowledgeResolver {
       case 'PREFERENCE_SALARY':
         value = candidate.minimumSalary !== undefined && candidate.minimumSalary !== null ? String(candidate.minimumSalary) : null;
         break;
-      // Below requires parsing `experience`, `education`, `skills` JSON
-      // This implementation acts defensively and returns UNKNOWN for complex fields not directly accessible
-      // without further AI/deterministic parsing in this basic resolver.
       case 'WORK_EXPERIENCE_COMPANY':
+        if (Array.isArray(candidate.experience) && candidate.experience.length > 0) {
+          value = candidate.experience[0].company ?? null;
+        }
+        break;
       case 'WORK_EXPERIENCE_TITLE':
+        if (Array.isArray(candidate.experience) && candidate.experience.length > 0) {
+          value = candidate.experience[0].title ?? null;
+        }
+        break;
+      case 'WORK_EXPERIENCE_START_DATE':
+        if (Array.isArray(candidate.experience) && candidate.experience.length > 0) {
+          value = candidate.experience[0].startDate ?? null;
+        }
+        break;
+      case 'WORK_EXPERIENCE_END_DATE':
+        if (Array.isArray(candidate.experience) && candidate.experience.length > 0) {
+           value = candidate.experience[0].endDate ?? null;
+        }
+        break;
       case 'EDUCATION_DEGREE':
+        if (Array.isArray(candidate.education) && candidate.education.length > 0) {
+          value = candidate.education[0].degree ?? null;
+        }
+        break;
       case 'EDUCATION_UNIVERSITY':
+        if (Array.isArray(candidate.education) && candidate.education.length > 0) {
+          value = candidate.education[0].university ?? null;
+        }
+        break;
+      case 'EDUCATION_START_DATE':
+        if (Array.isArray(candidate.education) && candidate.education.length > 0) {
+          value = candidate.education[0].startDate ?? null;
+        }
+        break;
+      case 'EDUCATION_END_DATE':
+        if (Array.isArray(candidate.education) && candidate.education.length > 0) {
+          value = candidate.education[0].endDate ?? null;
+        }
+        break;
       case 'SKILL_TECHNICAL':
+        if (Array.isArray(candidate.skills)) {
+          value = candidate.skills.join(', ');
+        }
+        break;
       case 'PREFERENCE_NOTICE_PERIOD':
+        value = (candidate.noticePeriod as string) ?? null;
+        break;
       case 'LEGAL_WORK_AUTHORIZATION':
       case 'LEGAL_SPONSORSHIP':
+        value = (candidate.workAuthorization as string) ?? null;
+        break;
       case 'QUESTION_FREE_TEXT':
       case 'QUESTION_YES_NO':
       case 'QUESTION_DROPDOWN':

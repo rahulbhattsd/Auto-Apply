@@ -83,4 +83,25 @@ export class BrowserAction {
       return { success: false, error: e instanceof Error ? e.message : String(e), verified: false };
     }
   }
+
+  async scroll(locator: string): Promise<ActionResult> {
+    try {
+      const loc = await this.verifyLocatorExists(locator);
+      if (!loc) return { success: false, error: 'Element not found or not visible', verified: false };
+
+      await loc.scrollIntoViewIfNeeded();
+      return { success: true, verified: true };
+    } catch (e: unknown) {
+       return { success: false, error: e instanceof Error ? e.message : String(e), verified: false };
+    }
+  }
+
+  async navigate(url: string): Promise<ActionResult> {
+     try {
+         await this.page.goto(url, { waitUntil: 'networkidle' });
+         return { success: true, verified: true };
+     } catch (e: unknown) {
+         return { success: false, error: e instanceof Error ? e.message : String(e), verified: false };
+     }
+  }
 }
