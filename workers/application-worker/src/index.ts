@@ -11,6 +11,9 @@ import { LeverAdapter } from './adapters/LeverAdapter';
 import { GenericFallbackAdapter } from './adapters/GenericFallbackAdapter';
 import { WorkdayAdapter } from './adapters/WorkdayAdapter';
 import { DarwinboxAdapter } from './adapters/DarwinboxAdapter';
+import { AshbyAdapter } from './adapters/AshbyAdapter';
+import { WorkableAdapter } from './adapters/WorkableAdapter';
+import { applyStealthScripts } from './utils/stealth';
 import { reconcileCheckpoint, RecoveryAction, checkIdempotency } from './recovery/index';
 
 import fs from 'fs';
@@ -18,7 +21,15 @@ import { exec } from 'child_process';
 import jwt from 'jsonwebtoken';
 
 const verificationQueue = new Queue(QUEUE_NAMES.VERIFICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
-const adapters = [new GreenhouseAdapter(), new LeverAdapter(), new WorkdayAdapter(), new DarwinboxAdapter(), new GenericFallbackAdapter()];
+const adapters = [
+  new GreenhouseAdapter(),
+  new LeverAdapter(),
+  new AshbyAdapter(),
+  new WorkableAdapter(),
+  new WorkdayAdapter(),
+  new DarwinboxAdapter(),
+  new GenericFallbackAdapter(),
+];
 
 import { downloadResumeFromS3 } from './utils/s3';
 
@@ -77,7 +88,8 @@ const worker = new Worker(
     }
 
     const latestResume = application.resumeVersions[0];
-    const fileUrl = latestResume?.basedOnMasterResume.fileUrl;
+    const resumeContent = latestResume?.content as Record<string, unknown> | null;
+    const fileUrl = (resumeContent?.['tailoredPdfKey'] as string) || latestResume?.basedOnMasterResume.fileUrl;
 
     if (!fileUrl) {
       throw new Error(`No generated resume is available for application ${applicationId}`);
@@ -106,10 +118,20 @@ const worker = new Worker(
     }
 
     const tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
-    const browser = await chromium.launch({ headless: env.PLAYWRIGHT_HEADLESS });
+    const browser = await chromium.launch({
+      headless: env.PLAYWRIGHT_HEADLESS,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
+    });
+    let context;
     let page;
     try {
-      page = await browser.newPage();
+      context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 800 },
+        locale: 'en-US',
+      });
+      await applyStealthScripts(context);
+      page = await context.newPage();
 
       console.log(`[ApplicationWorker] execution_started for application ${applicationId}`);
       await createOrUpdateCheckpoint({
@@ -172,8 +194,11 @@ const worker = new Worker(
          applicationId,
          currentUrl: page.url(),
          currentOutcome: outcome,
-         lastAction: outcome.type === 'READY_TO_SUBMIT' ? ExecutionState.READY_TO_SUBMIT :
-                     (outcome.type === 'HUMAN_VERIFICATION_REQUIRED' ? ExecutionState.WAITING_FOR_HUMAN : undefined)
+         ...(outcome.type === 'READY_TO_SUBMIT'
+           ? { lastAction: ExecutionState.READY_TO_SUBMIT }
+           : outcome.type === 'HUMAN_VERIFICATION_REQUIRED'
+           ? { lastAction: ExecutionState.WAITING_FOR_HUMAN }
+           : {}),
       });
 
       if (outcome.type === 'FAILED') {
@@ -363,6 +388,7 @@ const worker = new Worker(
       console.log(`[ApplicationWorker] execution_failed (unknown) for application ${applicationId}: ${message}`);
       throw error;
     } finally {
+      if (context) await context.close().catch(() => {});
       if (browser.isConnected()) await browser.close();
       if (fs.existsSync(tempResumePath)) {
         fs.unlinkSync(tempResumePath);

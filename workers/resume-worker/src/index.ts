@@ -1,7 +1,9 @@
 import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { prisma, recordDeadLetter } from '@autoapply/database';
-import { GroqProvider } from '@autoapply/ai-analysis';
+import { GroqProvider, ResumePdfCompiler } from '@autoapply/ai-analysis';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { env } from '@autoapply/config';
 
 const aiProvider = new GroqProvider();
 const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
@@ -114,6 +116,50 @@ const worker = new Worker(
     });
     const nextVersion = lastVersion ? lastVersion.version + 1 : 1;
 
+    // Compile tailored PDF
+    let tailoredPdfKey: string | undefined;
+    try {
+      const user = await prisma.user.findUnique({ where: { id: candidateProfile.userId } });
+      const resumeHtml = ResumePdfCompiler.generateHtml({
+        name: candidateProfile.name,
+        email: user?.email,
+        phone: candidateProfile.phone,
+        location: candidateProfile.location,
+        linkedin: candidateProfile.linkedin,
+        github: candidateProfile.github,
+        portfolio: candidateProfile.portfolio,
+        summary: `Targeting fresher / junior role at ${aiJobData.company || 'the organization'}. Motivated problem solver with strong foundation in core computer science principles, software development, and modern development stacks.`,
+        skills: (tailoredResume.content['skills'] as string[]) || candidateData.skills,
+        experience: candidateData.experience as any,
+        education: candidateData.education as any,
+        projects: (candidateProfile.projects as any) || [],
+      });
+
+      const pdfBuffer = await ResumePdfCompiler.compilePdf(resumeHtml);
+
+      if (env.S3_BUCKET && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY) {
+        const s3 = new S3Client({
+          endpoint: env.S3_ENDPOINT,
+          region: 'auto',
+          forcePathStyle: true,
+          credentials: {
+            accessKeyId: env.S3_ACCESS_KEY_ID,
+            secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+          },
+        });
+        tailoredPdfKey = `tailored-resumes/${candidateProfile.userId}/app-${applicationId}-v${nextVersion}.pdf`;
+        await s3.send(new PutObjectCommand({
+          Bucket: env.S3_BUCKET,
+          Key: tailoredPdfKey,
+          Body: pdfBuffer,
+          ContentType: 'application/pdf',
+        }));
+        console.log(`[ResumeWorker] Successfully compiled and uploaded tailored PDF to S3: ${tailoredPdfKey}`);
+      }
+    } catch (pdfErr) {
+      console.warn(`[ResumeWorker] Could not compile or upload tailored PDF (falling back to master):`, pdfErr);
+    }
+
     // Persist
     await prisma.resumeVersion.create({
       data: {
@@ -122,7 +168,10 @@ const worker = new Worker(
         applicationId,
         basedOnMasterResumeId: masterResume.id,
         version: nextVersion,
-        content: tailoredResume.content as import("@prisma/client").Prisma.InputJsonValue,
+        content: {
+          ...tailoredResume.content,
+          ...(tailoredPdfKey ? { tailoredPdfKey } : {}),
+        } as import("@prisma/client").Prisma.InputJsonValue,
         coverLetter,
       }
     });

@@ -7,6 +7,8 @@ import { HttpJsonJobSource } from './HttpJsonJobSource';
 import { GreenhouseJobSource } from './GreenhouseJobSource';
 import { LeverJobSource } from './LeverJobSource';
 import { HtmlJobSource } from './HtmlJobSource';
+import { AshbyJobSource } from './AshbyJobSource';
+import { WorkableJobSource } from './WorkableJobSource';
 
 type DbSource = {
   name: string;
@@ -32,6 +34,14 @@ export function createJobSource(source: DbSource): JobSource | null {
 
   if (config['type'] === 'lever') {
     return new LeverJobSource(source.name, config);
+  }
+
+  if (config['type'] === 'ashby') {
+    return new AshbyJobSource(source.name, config);
+  }
+
+  if (config['type'] === 'workable') {
+    return new WorkableJobSource(source.name, config);
   }
 
   if (config['type'] === 'html') {

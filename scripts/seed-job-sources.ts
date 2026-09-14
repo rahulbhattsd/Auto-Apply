@@ -4,88 +4,83 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-async function run() {
-  await prisma.jobSource.upsert({
-    where: { name: 'Razorpay' },
-    update: {},
-    create: {
-      name: 'Razorpay',
-      config: {
-        type: 'greenhouse',
-        boardToken: 'razorpaysoftwareprivatelimited',
-        companyName: 'Razorpay'
-      }
-    }
-  });
-
-  await prisma.jobSource.upsert({
-    where: { name: 'Glean' },
-    update: {},
-    create: {
-      name: 'Glean',
-      config: {
-        type: 'greenhouse',
-        boardToken: 'gleanwork',
-        companyName: 'Glean'
-      }
-    }
-  });
-
-  await prisma.jobSource.upsert({
-    where: { name: 'Fi Money' },
-    update: {},
-    create: {
-      name: 'Fi Money',
-      config: {
-        type: 'lever',
-        boardToken: 'fi',
-        companyName: 'Fi Money'
-      }
-    }
-  });
-
-  console.log("Seeded known JobSources.");
-
-  // Seed HTML JobSources based on classification report
-  const classificationFile = path.resolve(__dirname, 'career-sites-classification.json');
-  if (fs.existsSync(classificationFile)) {
-    const data = JSON.parse(fs.readFileSync(classificationFile, 'utf-8'));
-
-    // Types that don't have a dedicated adapter yet
-    const htmlTypes = new Set(['unknown', 'workday', 'darwinbox', 'keka', 'zohorecruit', 'ashby', 'workable', 'icims']);
-
-    let htmlSeededCount = 0;
-    for (const site of data) {
-      if (htmlTypes.has(site.detectedAts) && site.url) {
-        try {
-          await prisma.jobSource.upsert({
-            where: { name: site.company },
-            update: {
-              config: {
-                type: 'html',
-                endpoint: site.url,
-                companyName: site.company
-              }
-            },
-            create: {
-              name: site.company,
-              config: {
-                type: 'html',
-                endpoint: site.url,
-                companyName: site.company
-              }
-            }
-          });
-          htmlSeededCount++;
-        } catch (err) {
-          console.error(`Failed to seed HTML source for ${site.company}:`, err);
-        }
-      }
-    }
-    console.log(`Seeded ${htmlSeededCount} HtmlJobSources from classification data.`);
-  } else {
-    console.warn("career-sites-classification.json not found, skipping HTML sources seeding.");
-  }
+interface CatalogEntry {
+  company: string;
+  category: string;
+  url: string;
+  type: string;
+  boardToken?: string;
+  endpoint?: string;
 }
 
-run().catch(console.error).finally(() => prisma.$disconnect());
+async function run() {
+  const catalogPath = path.resolve(__dirname, '../packages/job-discovery/src/data/companies-catalog.json');
+  if (!fs.existsSync(catalogPath)) {
+    console.error(`Companies catalog not found at ${catalogPath}`);
+    process.exit(1);
+  }
+
+  const catalog: CatalogEntry[] = JSON.parse(fs.readFileSync(catalogPath, 'utf-8'));
+  console.log(`Ingesting ${catalog.length} companies from catalog...`);
+
+  let seededCompanies = 0;
+  let seededSources = 0;
+
+  for (const entry of catalog) {
+    try {
+      // 1. Upsert Company
+      await prisma.company.upsert({
+        where: { name: entry.company },
+        update: {
+          website: entry.url,
+          description: `Category: ${entry.category}`
+        },
+        create: {
+          name: entry.company,
+          website: entry.url,
+          description: `Category: ${entry.category}`
+        }
+      });
+      seededCompanies++;
+
+      // 2. Build JobSource Config
+      let config: Record<string, unknown> = {
+        type: entry.type,
+        companyName: entry.company,
+        category: entry.category,
+      };
+
+      if (entry.type === 'greenhouse' && entry.boardToken) {
+        config = { ...config, boardToken: entry.boardToken };
+      } else if (entry.type === 'lever' && entry.boardToken) {
+        config = { ...config, boardToken: entry.boardToken };
+      } else if (entry.type === 'ashby' && entry.boardToken) {
+        config = { ...config, boardToken: entry.boardToken };
+      } else if (entry.type === 'workable' && entry.boardToken) {
+        config = { ...config, boardToken: entry.boardToken };
+      } else if (entry.type === 'html' && entry.endpoint) {
+        config = { ...config, endpoint: entry.endpoint };
+      }
+
+      // 3. Upsert JobSource
+      await prisma.jobSource.upsert({
+        where: { name: entry.company },
+        update: { config },
+        create: {
+          name: entry.company,
+          config,
+        }
+      });
+      seededSources++;
+
+    } catch (err) {
+      console.error(`Failed to seed source for ${entry.company}:`, err);
+    }
+  }
+
+  console.log(`Successfully seeded ${seededCompanies} companies and ${seededSources} job sources into PostgreSQL.`);
+}
+
+run()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

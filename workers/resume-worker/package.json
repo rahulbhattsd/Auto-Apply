@@ -14,7 +14,8 @@
     "@autoapply/application-engine": "workspace:*",
     "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:*",
-    "@autoapply/queue": "workspace:*"
+    "@autoapply/queue": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1128.0"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

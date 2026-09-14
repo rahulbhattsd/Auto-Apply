@@ -1,7 +1,7 @@
 import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { Queue } from '@autoapply/queue';
 import { prisma, recordDeadLetter } from '@autoapply/database';
-import { loadConfiguredJobSources, NormalizationService } from '@autoapply/job-discovery';
+import { loadConfiguredJobSources, NormalizationService, FresherRoleFilter } from '@autoapply/job-discovery';
 
 const analysisQueue = new Queue(QUEUE_NAMES.JOB_ANALYSIS, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 const normalization = new NormalizationService();
@@ -36,6 +36,16 @@ const worker = new Worker(
             if (location) query.location = location;
             const rawJobs = await source.searchJobs(query);
             for (const rawJob of rawJobs) {
+              const fresherCheck = FresherRoleFilter.evaluate({
+                title: rawJob.title,
+                description: rawJob.description,
+              });
+
+              if (!fresherCheck.eligible) {
+                console.log(`[DiscoveryWorker] Skipping ineligible job "${rawJob.title}" at ${source.name}: ${fresherCheck.reason}`);
+                continue;
+              }
+
               const normalizedJob = await normalization.normalizeAndPersist(rawJob, source);
               discovered += 1;
               await analysisQueue.add(

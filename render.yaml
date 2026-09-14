@@ -67,7 +67,7 @@ services:
   - type: worker
     name: autoapply-worker
     runtime: docker
-    plan: 0.5c-512mb
+    plan: standard # 1 CPU, 2GB RAM required for Playwright Chromium & 6 workers
     region: singapore
     dockerfilePath: ./docker/worker.Dockerfile
     dockerContext: .
