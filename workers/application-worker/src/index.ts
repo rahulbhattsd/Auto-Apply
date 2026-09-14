@@ -5,6 +5,8 @@ import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
+import { getCheckpoint, createOrUpdateCheckpoint, incrementRetryCount } from './checkpoint/index';
+import { classifyError } from './errors/index';
 import { LeverAdapter } from './adapters/LeverAdapter';
 import { GenericFallbackAdapter } from './adapters/GenericFallbackAdapter';
 import { WorkdayAdapter } from './adapters/WorkdayAdapter';
@@ -86,14 +88,111 @@ const worker = new Worker(
     let page;
     try {
       page = await browser.newPage();
-      await adapter.inspect(page, application.job.url);
-      await adapter.fill(page, application.candidate, tempResumePath);
-      const submitted = await adapter.submit(page);
+
+      const checkpoint = await getCheckpoint(applicationId);
+
+      // Attempt checkpoint recovery logic if applicable
+      if (checkpoint && checkpoint.hasSubmitted) {
+          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: checkpoint.submissionEvidence });
+          return;
+      }
+
+      if (checkpoint && checkpoint.currentUrl) {
+         try {
+             await page.goto(checkpoint.currentUrl, { waitUntil: 'networkidle' });
+         } catch(e) {
+             console.log(`Failed to resume from checkpoint URL, starting from scratch: ${e}`);
+             await page.goto(application.job.url, { waitUntil: 'networkidle' });
+         }
+      } else {
+         await page.goto(application.job.url, { waitUntil: 'networkidle' });
+      }
+
+      // Check idempotency early
+      const checkIdempotency = async (p: import('playwright').Page) => {
+         const url = p.url().toLowerCase();
+         if (url.includes('confirmation') || url.includes('success') || url.includes('submitted')) return true;
+         return await p.evaluate(() => {
+            const text = document.body.innerText.toLowerCase();
+            return text.includes('you have already applied') ||
+                   text.includes('application has been submitted') ||
+                   text.includes('application successfully submitted') ||
+                   text.includes('thank you for applying');
+         });
+      };
+
+      if (await checkIdempotency(page)) {
+          await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: 'Already applied (detected on load)' } });
+          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: 'Already applied (detected on load)' } });
+          await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
+          return;
+      }
+
+      await createOrUpdateCheckpoint({
+         applicationId,
+         adapter: adapter.constructor.name,
+         currentUrl: page.url()
+      }, true);
+
+      await adapter.inspect(page, page.url());
+      const outcome = await adapter.fill(page, application.candidate, tempResumePath);
+
+      await createOrUpdateCheckpoint({
+         applicationId,
+         currentUrl: page.url(),
+         currentOutcome: outcome
+      });
+
+      if (outcome.type === 'FAILED') {
+        throw new Error(`Adapter failed: ${outcome.reason}`);
+      }
+
+      if (outcome.type === 'BLOCKED_REQUIRED_FIELD') {
+        throw new Error(`UNKNOWN_REQUIRED_FIELD: ${outcome.fields.join(', ')}`);
+      }
+
+      if (outcome.type === 'HUMAN_VERIFICATION_REQUIRED') {
+         throw new Error(`HUMAN_VERIFICATION_REQUIRED: ${outcome.reason}`);
+      }
+
+      if (outcome.type === 'SUBMITTED') {
+         await createOrUpdateCheckpoint({
+             applicationId,
+             hasSubmitted: true,
+             submissionEvidence: outcome.evidence
+         });
+         await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: outcome.evidence });
+         await verificationQueue.add('verify-application', { applicationId: application.id }, {
+           attempts: RETRY_POLICIES.DEFAULT.attempts,
+           backoff: RETRY_POLICIES.DEFAULT.backoff,
+         });
+         return;
+      }
+
+      // Re-verify idempotency right before click
+      if (await checkIdempotency(page)) {
+          await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: 'Already applied (detected before submit)' } });
+          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: 'Already applied (detected before submit)' } });
+          await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
+          return;
+      }
+
+      let submitted;
+      if (outcome.type === 'READY_TO_SUBMIT') {
+        submitted = await adapter.submit(page, outcome.submitLocator);
+      } else {
+         submitted = await adapter.submit(page);
+      }
 
       if (!submitted.confirmed) {
-        await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: 'SUBMISSION_NOT_CONFIRMED' });
-        return;
+        throw new Error('SUBMISSION_NOT_CONFIRMED');
       }
+
+      await createOrUpdateCheckpoint({
+         applicationId,
+         hasSubmitted: true,
+         submissionEvidence: submitted.evidence
+      });
 
       await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: submitted.evidence });
       await verificationQueue.add('verify-application', { applicationId: application.id }, {
@@ -101,8 +200,10 @@ const worker = new Worker(
         backoff: RETRY_POLICIES.DEFAULT.backoff,
       });
     } catch (error) {
+      const classification = classifyError(error);
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('CAPTCHA_DETECTED') || message.includes('cloudflare') || message.includes('ACCOUNT_REQUIRED')) {
+
+      if (classification.needsHuman) {
         if (activeHandoffs >= env.MAX_CONCURRENT_HUMAN_HANDOFFS) {
           await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message + ' (Handoff limit reached)' });
           return;
@@ -184,9 +285,19 @@ const worker = new Worker(
         }
 
         return; // Exited the human handoff flow
-      } else if (message.includes('MFA_DETECTED') || message.includes('UNKNOWN_REQUIRED_FIELD')) {
-        await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message });
-        return;
+      }
+
+      // If it's not a human verification error, let's look at other classifications
+      if (classification.terminal) {
+          // Terminal error, we don't throw to retry, we just fail it to NEEDS_HUMAN or FAILED
+          await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message, classification: classification.category });
+          return;
+      }
+
+      // For retryable transient errors, throw so BullMQ handles retry
+      if (classification.retryable) {
+          await incrementRetryCount(applicationId);
+          throw error;
       }
 
       throw error;
