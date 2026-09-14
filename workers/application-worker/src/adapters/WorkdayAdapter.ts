@@ -51,7 +51,7 @@ export class WorkdayAdapter implements ApplicationAdapter {
     // Idempotency: Prevent duplicate filling if already on success page
     const url = browserPage.url();
     if (url.includes('confirmation') || url.includes('success')) {
-        return { type: 'READY_TO_SUBMIT' };
+        return { type: 'SUBMITTED', evidence: { confirmationUrl: url } };
     }
 
     let isLastStep = false;

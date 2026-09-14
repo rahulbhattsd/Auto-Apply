@@ -97,7 +97,10 @@ export class FormCompletionEngine {
     if (navigation === 'FINAL_SUBMIT') {
        // Do not click the submit button. Return the locator to the orchestrator.
        const submitLocator = navActions.find(a => a.type === 'click')?.locator;
-       return submitLocator ? { type: 'READY_TO_SUBMIT', submitLocator } : { type: 'READY_TO_SUBMIT' };
+       if (!submitLocator) {
+           return { type: 'FAILED', reason: 'MISSING_SUBMIT_LOCATOR' };
+       }
+       return { type: 'READY_TO_SUBMIT', submitLocator };
     } else if (navigation === 'NEXT') {
        // Execute Navigation Action
        if (navActions.length > 0) {
