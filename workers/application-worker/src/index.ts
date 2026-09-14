@@ -5,12 +5,13 @@ import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { env } from '@autoapply/config';
 import { GreenhouseAdapter } from './adapters/GreenhouseAdapter';
-import { getCheckpoint, createOrUpdateCheckpoint, incrementRetryCount } from './checkpoint/index';
-import { classifyError } from './errors/index';
+import { getCheckpoint, createOrUpdateCheckpoint, incrementRetryCount, ExecutionState } from './checkpoint/index';
+import { classifyError, ApplicationExecutionError, ErrorCategory } from './errors/index';
 import { LeverAdapter } from './adapters/LeverAdapter';
 import { GenericFallbackAdapter } from './adapters/GenericFallbackAdapter';
 import { WorkdayAdapter } from './adapters/WorkdayAdapter';
 import { DarwinboxAdapter } from './adapters/DarwinboxAdapter';
+import { reconcileCheckpoint, RecoveryAction, checkIdempotency } from './recovery/index';
 
 import fs from 'fs';
 import { exec } from 'child_process';
@@ -82,21 +83,41 @@ const worker = new Worker(
       throw new Error(`No generated resume is available for application ${applicationId}`);
     }
 
-    const tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
+    const checkpoint = await getCheckpoint(applicationId);
 
+    // Enforce Retry Policy Authority
+    const maxRetries = RETRY_POLICIES.DEFAULT.attempts;
+    if (checkpoint && checkpoint.retryCount >= maxRetries) {
+      console.log(`[ApplicationWorker] Execution for application ${applicationId} has exhausted retries (${checkpoint.retryCount}/${maxRetries}).`);
+      await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: 'Retry Exhausted', classification: ErrorCategory.UNKNOWN_FATAL_ERROR });
+      await recordDeadLetter({
+        jobId: job.id!,
+        queueName: QUEUE_NAMES.APPLICATION,
+        error: 'Retry Exhausted',
+        attemptCount: job.attemptsMade,
+        stackTrace: null,
+      });
+      return;
+    }
+
+    if (checkpoint && checkpoint.hasSubmitted) {
+        await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: checkpoint.submissionEvidence });
+        return;
+    }
+
+    const tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
     const browser = await chromium.launch({ headless: env.PLAYWRIGHT_HEADLESS });
     let page;
     try {
       page = await browser.newPage();
 
-      const checkpoint = await getCheckpoint(applicationId);
+      console.log(`[ApplicationWorker] execution_started for application ${applicationId}`);
+      await createOrUpdateCheckpoint({
+         applicationId,
+         lastAction: ExecutionState.STARTING
+      }, true);
 
       // Attempt checkpoint recovery logic if applicable
-      if (checkpoint && checkpoint.hasSubmitted) {
-          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: checkpoint.submissionEvidence });
-          return;
-      }
-
       if (checkpoint && checkpoint.currentUrl) {
          try {
              await page.goto(checkpoint.currentUrl, { waitUntil: 'networkidle' });
@@ -108,58 +129,71 @@ const worker = new Worker(
          await page.goto(application.job.url, { waitUntil: 'networkidle' });
       }
 
-      // Check idempotency early
-      const checkIdempotency = async (p: import('playwright').Page) => {
-         const url = p.url().toLowerCase();
-         if (url.includes('confirmation') || url.includes('success') || url.includes('submitted')) return true;
-         return await p.evaluate(() => {
-            const text = document.body.innerText.toLowerCase();
-            return text.includes('you have already applied') ||
-                   text.includes('application has been submitted') ||
-                   text.includes('application successfully submitted') ||
-                   text.includes('thank you for applying');
-         });
-      };
+      // Reconcile and handle RecoveryAction
+      if (checkpoint) {
+         console.log(`[ApplicationWorker] recovery_started for application ${applicationId}`);
+         const decision = await reconcileCheckpoint(page, checkpoint, application.job.url, adapter);
+         console.log(`[ApplicationWorker] checkpoint_reconciled for application ${applicationId} -> ${decision.action}`);
 
-      if (await checkIdempotency(page)) {
-          await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: 'Already applied (detected on load)' } });
-          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: 'Already applied (detected on load)' } });
-          await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
-          return;
+         if (decision.action === RecoveryAction.ALREADY_SUBMITTED) {
+            await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: decision.reason } });
+            await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: decision.reason } });
+            await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
+            return;
+         } else if (decision.action === RecoveryAction.RESTART_FROM_SCRATCH && checkpoint.currentUrl && page.url() !== application.job.url) {
+            await page.goto(application.job.url, { waitUntil: 'networkidle' });
+         }
+      } else {
+         if (await checkIdempotency(page)) {
+            await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: 'Already applied (detected on load)' } });
+            await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: 'Already applied (detected on load)' } });
+            await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
+            return;
+         }
       }
 
       await createOrUpdateCheckpoint({
          applicationId,
          adapter: adapter.constructor.name,
-         currentUrl: page.url()
-      }, true);
+         currentUrl: page.url(),
+         lastAction: ExecutionState.INSPECTING
+      });
 
       await adapter.inspect(page, page.url());
+
+      await createOrUpdateCheckpoint({
+         applicationId,
+         lastAction: ExecutionState.FILLING
+      });
+
       const outcome = await adapter.fill(page, application.candidate, tempResumePath);
 
       await createOrUpdateCheckpoint({
          applicationId,
          currentUrl: page.url(),
-         currentOutcome: outcome
+         currentOutcome: outcome,
+         lastAction: outcome.type === 'READY_TO_SUBMIT' ? ExecutionState.READY_TO_SUBMIT :
+                     (outcome.type === 'HUMAN_VERIFICATION_REQUIRED' ? ExecutionState.WAITING_FOR_HUMAN : undefined)
       });
 
       if (outcome.type === 'FAILED') {
-        throw new Error(`Adapter failed: ${outcome.reason}`);
+        throw new ApplicationExecutionError(`Adapter failed: ${outcome.reason}`, classifyError(`invalid`));
       }
 
       if (outcome.type === 'BLOCKED_REQUIRED_FIELD') {
-        throw new Error(`UNKNOWN_REQUIRED_FIELD: ${outcome.fields.join(', ')}`);
+        throw new ApplicationExecutionError(`UNKNOWN_REQUIRED_FIELD: ${outcome.fields.join(', ')}`, classifyError(`unknown_required_field`));
       }
 
       if (outcome.type === 'HUMAN_VERIFICATION_REQUIRED') {
-         throw new Error(`HUMAN_VERIFICATION_REQUIRED: ${outcome.reason}`);
+         throw new ApplicationExecutionError(`HUMAN_VERIFICATION_REQUIRED: ${outcome.reason}`, classifyError(`human`));
       }
 
       if (outcome.type === 'SUBMITTED') {
          await createOrUpdateCheckpoint({
              applicationId,
              hasSubmitted: true,
-             submissionEvidence: outcome.evidence
+             submissionEvidence: outcome.evidence,
+             lastAction: ExecutionState.COMPLETED
          });
          await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: outcome.evidence });
          await verificationQueue.add('verify-application', { applicationId: application.id }, {
@@ -167,6 +201,11 @@ const worker = new Worker(
            backoff: RETRY_POLICIES.DEFAULT.backoff,
          });
          return;
+      }
+
+      // Submission Boundary
+      if (outcome.type !== 'READY_TO_SUBMIT' || !outcome.submitLocator) {
+         throw new ApplicationExecutionError('MISSING_SUBMIT_LOCATOR', classifyError('missing_submit_locator'));
       }
 
       // Re-verify idempotency right before click
@@ -177,21 +216,39 @@ const worker = new Worker(
           return;
       }
 
+      console.log(`[ApplicationWorker] submission_started for application ${applicationId}`);
+      await createOrUpdateCheckpoint({ applicationId, lastAction: ExecutionState.SUBMITTING });
+
       let submitted;
-      if (outcome.type === 'READY_TO_SUBMIT') {
+      try {
         submitted = await adapter.submit(page, outcome.submitLocator);
-      } else {
-         submitted = await adapter.submit(page);
+      } catch (submitErr) {
+        console.log(`[ApplicationWorker] submission error for application ${applicationId}: ${submitErr}. Verifying submission state.`);
+        await createOrUpdateCheckpoint({ applicationId, lastAction: ExecutionState.VERIFYING_SUBMISSION });
+
+        // Let's pause and check if the submission actually succeeded before propagating error.
+        await new Promise(r => setTimeout(r, 2000));
+        if (await checkIdempotency(page)) {
+           console.log(`[ApplicationWorker] submission_ambiguous but recovered via idempotency for application ${applicationId}`);
+           await createOrUpdateCheckpoint({ applicationId, hasSubmitted: true, submissionEvidence: { reason: 'Already applied (detected after submission error)' } });
+           await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: { reason: 'Already applied (detected after submission error)' } });
+           await verificationQueue.add('verify-application', { applicationId: application.id }, { attempts: RETRY_POLICIES.DEFAULT.attempts, backoff: RETRY_POLICIES.DEFAULT.backoff });
+           return;
+        }
+
+        throw submitErr;
       }
 
       if (!submitted.confirmed) {
-        throw new Error('SUBMISSION_NOT_CONFIRMED');
+        throw new ApplicationExecutionError('SUBMISSION_NOT_CONFIRMED', classifyError('submission_not_confirmed'));
       }
 
+      console.log(`[ApplicationWorker] submission_confirmed for application ${applicationId}`);
       await createOrUpdateCheckpoint({
          applicationId,
          hasSubmitted: true,
-         submissionEvidence: submitted.evidence
+         submissionEvidence: submitted.evidence,
+         lastAction: ExecutionState.COMPLETED
       });
 
       await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: submitted.evidence });
@@ -204,6 +261,7 @@ const worker = new Worker(
       const message = error instanceof Error ? error.message : String(error);
 
       if (classification.needsHuman) {
+        console.log(`[ApplicationWorker] human_handoff requested for application ${applicationId}: ${message}`);
         if (activeHandoffs >= env.MAX_CONCURRENT_HUMAN_HANDOFFS) {
           await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message + ' (Handoff limit reached)' });
           return;
@@ -290,16 +348,19 @@ const worker = new Worker(
       // If it's not a human verification error, let's look at other classifications
       if (classification.terminal) {
           // Terminal error, we don't throw to retry, we just fail it to NEEDS_HUMAN or FAILED
+          console.log(`[ApplicationWorker] execution_failed (terminal) for application ${applicationId}: ${message}`);
           await transitionApplication(application.id, 'NEEDS_HUMAN', { reason: message, classification: classification.category });
           return;
       }
 
       // For retryable transient errors, throw so BullMQ handles retry
       if (classification.retryable) {
+          console.log(`[ApplicationWorker] retry_scheduled for application ${applicationId}: ${message}`);
           await incrementRetryCount(applicationId);
           throw error;
       }
 
+      console.log(`[ApplicationWorker] execution_failed (unknown) for application ${applicationId}: ${message}`);
       throw error;
     } finally {
       if (browser.isConnected()) await browser.close();

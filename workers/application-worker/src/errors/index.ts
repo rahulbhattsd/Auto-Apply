@@ -18,7 +18,43 @@ export interface ErrorClassification {
   terminal: boolean;
 }
 
+export class ApplicationExecutionError extends Error {
+  public readonly category: ErrorCategory;
+  public readonly retryable: boolean;
+  public readonly resumable: boolean;
+  public readonly needsHuman: boolean;
+  public readonly terminal: boolean;
+  public override readonly name = 'ApplicationExecutionError';
+  public override readonly cause?: Error;
+  public readonly metadata?: Record<string, unknown>;
+
+  constructor(message: string, classification: ErrorClassification, options?: { cause?: Error, metadata?: Record<string, unknown> }) {
+    super(message);
+    this.category = classification.category;
+    this.retryable = classification.retryable;
+    this.resumable = classification.resumable;
+    this.needsHuman = classification.needsHuman;
+    this.terminal = classification.terminal;
+    if (options?.cause) {
+      this.cause = options.cause;
+    }
+    if (options?.metadata) {
+      this.metadata = options.metadata;
+    }
+  }
+}
+
 export function classifyError(error: unknown): ErrorClassification {
+  if (error instanceof ApplicationExecutionError) {
+    return {
+      category: error.category,
+      retryable: error.retryable,
+      resumable: error.resumable,
+      needsHuman: error.needsHuman,
+      terminal: error.terminal,
+    };
+  }
+
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
   if (message.includes('captcha') || message.includes('cloudflare') || message.includes('mfa') || message.includes('human')) {
@@ -37,11 +73,15 @@ export function classifyError(error: unknown): ErrorClassification {
      return { category: ErrorCategory.PAGE_STATE_MISMATCH, retryable: true, resumable: true, needsHuman: false, terminal: false };
   }
 
-  if (message.includes('unknown_required_field') || message.includes('submission_not_confirmed')) {
-      return { category: ErrorCategory.ADAPTER_FAILURE, retryable: false, resumable: false, needsHuman: true, terminal: false };
+  if (message.includes('unknown_required_field') || message.includes('missing_submit_locator')) {
+      return { category: ErrorCategory.ADAPTER_FAILURE, retryable: false, resumable: false, needsHuman: false, terminal: true };
   }
 
-  if (message.includes('invalid') || message.includes('missing')) {
+  if (message.includes('submission_not_confirmed')) {
+      return { category: ErrorCategory.SUBMISSION_FAILURE, retryable: true, resumable: true, needsHuman: false, terminal: false };
+  }
+
+  if (message.includes('invalid')) {
      return { category: ErrorCategory.INVALID_APPLICATION_STATE, retryable: false, resumable: false, needsHuman: false, terminal: true };
   }
 

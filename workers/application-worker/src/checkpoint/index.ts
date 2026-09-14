@@ -1,6 +1,19 @@
 import { prisma, ApplicationExecutionCheckpoint, Prisma } from '@autoapply/database';
 import { ApplicationOutcome } from '@autoapply/shared';
 
+export enum ExecutionState {
+  STARTING = 'STARTING',
+  INSPECTING = 'INSPECTING',
+  FILLING = 'FILLING',
+  READY_TO_SUBMIT = 'READY_TO_SUBMIT',
+  SUBMITTING = 'SUBMITTING',
+  VERIFYING_SUBMISSION = 'VERIFYING_SUBMISSION',
+  RECOVERING = 'RECOVERING',
+  COMPLETED = 'COMPLETED',
+  WAITING_FOR_HUMAN = 'WAITING_FOR_HUMAN',
+  FAILED = 'FAILED'
+}
+
 export type CheckpointParams = {
   applicationId: number;
   adapter?: string;
@@ -25,13 +38,13 @@ export async function createOrUpdateCheckpoint(
       where: { applicationId: params.applicationId },
       data: {
         executionAttempt: incrementAttempt ? existing.executionAttempt + 1 : existing.executionAttempt,
-        adapter: params.adapter ?? existing.adapter,
-        currentStep: params.currentStep ?? existing.currentStep,
-        currentUrl: params.currentUrl ?? existing.currentUrl,
-        lastAction: params.lastAction ?? existing.lastAction,
-        currentOutcome: params.currentOutcome ? (params.currentOutcome as unknown as Prisma.InputJsonValue) : existing.currentOutcome ?? Prisma.DbNull,
-        hasSubmitted: params.hasSubmitted ?? existing.hasSubmitted,
-        submissionEvidence: params.submissionEvidence ? (params.submissionEvidence as Prisma.InputJsonValue) : existing.submissionEvidence ?? Prisma.DbNull,
+        adapter: params.adapter !== undefined ? params.adapter : existing.adapter,
+        currentStep: params.currentStep !== undefined ? params.currentStep : existing.currentStep,
+        currentUrl: params.currentUrl !== undefined ? params.currentUrl : existing.currentUrl,
+        lastAction: params.lastAction !== undefined ? params.lastAction : existing.lastAction,
+        currentOutcome: params.currentOutcome !== undefined ? (params.currentOutcome as unknown as Prisma.InputJsonValue) : (existing.currentOutcome as unknown as Prisma.InputJsonValue | undefined ?? Prisma.DbNull),
+        hasSubmitted: params.hasSubmitted !== undefined ? params.hasSubmitted : existing.hasSubmitted,
+        submissionEvidence: params.submissionEvidence !== undefined ? (params.submissionEvidence as Prisma.InputJsonValue) : (existing.submissionEvidence as unknown as Prisma.InputJsonValue | undefined ?? Prisma.DbNull),
       }
     });
   }
@@ -44,9 +57,9 @@ export async function createOrUpdateCheckpoint(
       currentStep: params.currentStep ?? 0,
       currentUrl: params.currentUrl ?? null,
       lastAction: params.lastAction ?? null,
-      currentOutcome: params.currentOutcome ? (params.currentOutcome as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
+      currentOutcome: params.currentOutcome !== undefined ? (params.currentOutcome as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       hasSubmitted: params.hasSubmitted ?? false,
-      submissionEvidence: params.submissionEvidence ? (params.submissionEvidence as Prisma.InputJsonValue) : Prisma.DbNull,
+      submissionEvidence: params.submissionEvidence !== undefined ? (params.submissionEvidence as Prisma.InputJsonValue) : Prisma.DbNull,
     }
   });
 }

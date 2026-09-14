@@ -29,7 +29,7 @@ test('Hardening - Failure Classification', async (t) => {
       const classification = classifyError(e);
       assert.strictEqual(classification.category, ErrorCategory.ADAPTER_FAILURE);
       assert.strictEqual(classification.retryable, false);
-      assert.strictEqual(classification.needsHuman, true);
+      assert.strictEqual(classification.needsHuman, false);
    });
 
    await t.test('CAPTCHA blocks submission terminal', () => {
