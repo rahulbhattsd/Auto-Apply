@@ -1,4 +1,4 @@
-import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult, ApplicationOutcome } from '@autoapply/shared';
 import type { Page } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -39,13 +39,13 @@ export class GreenhouseAdapter implements ApplicationAdapter {
     return { inputs };
   }
 
-  async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
+  async fill(page: unknown, profile: unknown, resumePath: string): Promise<ApplicationOutcome> {
     const browserPage = page as Page;
 
     // Idempotency: Prevent duplicate filling if already on success page
     const url = browserPage.url();
     if (url.includes('confirmation') || url.includes('success')) {
-        return;
+        return { type: 'READY_TO_SUBMIT' };
     }
 
     const candidate = profile as CandidateProfileForApplication;
@@ -121,9 +121,10 @@ export class GreenhouseAdapter implements ApplicationAdapter {
     }
 
     await this.assertNoUnknownRequiredFields(browserPage);
+    return { type: 'READY_TO_SUBMIT', submitLocator: 'input[type="submit"], button[type="submit"], #submit_app' };
   }
 
-  async submit(page: unknown): Promise<SubmissionResult> {
+  async submit(page: unknown, submitLocator?: string): Promise<SubmissionResult> {
     const browserPage = page as Page;
 
     // Idempotency check before click
@@ -132,7 +133,10 @@ export class GreenhouseAdapter implements ApplicationAdapter {
         return { confirmed: true, evidence: { confirmationUrl: initialUrl } };
     }
 
-    await browserPage.click('input[type="submit"], button[type="submit"], #submit_app', { timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:submit_button'); });
+    if (!submitLocator) {
+      submitLocator = 'input[type="submit"], button[type="submit"], #submit_app';
+    }
+    await browserPage.click(submitLocator, { timeout: 5000 }).catch(() => { throw new Error('MISSING_SELECTOR:submit_button'); });
 
     try {
         const confirmation = await browserPage.waitForSelector('h1:has-text("Thank you"), .application-success', { timeout: 10000 });

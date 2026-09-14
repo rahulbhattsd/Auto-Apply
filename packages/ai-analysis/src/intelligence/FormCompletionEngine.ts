@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { PageObserver } from '@autoapply/shared';
+import { PageObserver, ApplicationOutcome } from '@autoapply/shared';
 import { BrowserAction } from '@autoapply/shared';
 import { CandidateContext } from './CandidateKnowledgeResolver.js';
 import { SemanticFieldMapper } from './SemanticFieldMapper.js';
@@ -15,7 +15,7 @@ export class FormCompletionEngine {
     this.planner = new ApplicationActionPlanner();
   }
 
-  async processPage(page: Page, candidate: CandidateContext, resumePath?: string): Promise<{ state: 'NEXT' | 'SUBMIT' | 'NO_ACTION' }> {
+  async processPage(page: Page, candidate: CandidateContext, resumePath?: string): Promise<ApplicationOutcome> {
     const observer = new PageObserver(page);
     const browserAction = new BrowserAction(page);
     const executor = new ActionExecutor(browserAction, page);
@@ -26,15 +26,15 @@ export class FormCompletionEngine {
     // Check for CAPTCHA/MFA
     const pageHtml = await page.content();
     if (pageHtml.includes('recaptcha') || pageHtml.includes('hcaptcha') || pageHtml.includes('cloudflare')) {
-       throw new Error('CAPTCHA_DETECTED');
+       return { type: 'HUMAN_VERIFICATION_REQUIRED', reason: 'CAPTCHA_DETECTED' };
     }
     const mfaElements = await page.$$('input[name*="code"], input[name*="mfa"]');
     if (mfaElements.length > 0) {
-       throw new Error('MFA_DETECTED');
+       return { type: 'HUMAN_VERIFICATION_REQUIRED', reason: 'MFA_DETECTED' };
     }
 
     if (observation.fields.length === 0 && observation.buttons.length === 0) {
-       return { state: 'NO_ACTION' };
+       return { type: 'NO_ACTION' };
     }
 
     // Understanding & Mapping
@@ -91,20 +91,21 @@ export class FormCompletionEngine {
     }
 
     if (missingRequired.length > 0) {
-       throw new Error(`UNKNOWN_REQUIRED_FIELD:${missingRequired.join(',')}`);
-    }
-
-    // Execute Navigation Action
-    if (navActions.length > 0) {
-       await executor.execute(navActions);
+       return { type: 'BLOCKED_REQUIRED_FIELD', fields: missingRequired };
     }
 
     if (navigation === 'FINAL_SUBMIT') {
-       return { state: 'SUBMIT' };
+       // Do not click the submit button. Return the locator to the orchestrator.
+       const submitLocator = navActions.find(a => a.type === 'click')?.locator;
+       return submitLocator ? { type: 'READY_TO_SUBMIT', submitLocator } : { type: 'READY_TO_SUBMIT' };
     } else if (navigation === 'NEXT') {
-       return { state: 'NEXT' };
+       // Execute Navigation Action
+       if (navActions.length > 0) {
+          await executor.execute(navActions);
+       }
+       return { type: 'CONTINUE' };
     }
 
-    return { state: 'NO_ACTION' };
+    return { type: 'NO_ACTION' };
   }
 }

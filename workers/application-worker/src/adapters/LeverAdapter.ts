@@ -1,4 +1,4 @@
-import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult, ApplicationOutcome } from '@autoapply/shared';
 import type { Page } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -45,7 +45,7 @@ export class LeverAdapter implements ApplicationAdapter {
     return { inputs };
   }
 
-  async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
+  async fill(page: unknown, profile: unknown, resumePath: string): Promise<ApplicationOutcome> {
     const browserPage = page as Page;
     const candidate = profile as CandidateProfileForApplication;
     await browserPage.waitForSelector('input[name="name"]', { state: 'visible', timeout: 5000 });
@@ -117,11 +117,16 @@ export class LeverAdapter implements ApplicationAdapter {
     }
 
     await this.assertNoUnknownRequiredFields(browserPage);
+    return { type: 'READY_TO_SUBMIT', submitLocator: 'button[type="submit"].postings-btn' };
   }
 
-  async submit(page: unknown): Promise<SubmissionResult> {
+  async submit(page: unknown, submitLocator?: string): Promise<SubmissionResult> {
     const browserPage = page as Page;
-    await browserPage.click('button[type="submit"].postings-btn');
+
+    if (!submitLocator) {
+      submitLocator = 'button[type="submit"].postings-btn';
+    }
+    await browserPage.click(submitLocator);
 
     try {
         await browserPage.waitForURL('**/thanks', { timeout: 3000 });

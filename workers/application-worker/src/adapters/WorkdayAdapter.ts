@@ -1,4 +1,4 @@
-import { ApplicationAdapter, SubmissionResult } from '@autoapply/shared';
+import { ApplicationAdapter, SubmissionResult, ApplicationOutcome } from '@autoapply/shared';
 import type { Page } from 'playwright';
 
 type CandidateProfileForApplication = {
@@ -44,14 +44,14 @@ export class WorkdayAdapter implements ApplicationAdapter {
     return { inputs };
   }
 
-  async fill(page: unknown, profile: unknown, resumePath: string): Promise<void> {
+  async fill(page: unknown, profile: unknown, resumePath: string): Promise<ApplicationOutcome> {
     const browserPage = page as Page;
     const candidate = profile as CandidateProfileForApplication;
 
     // Idempotency: Prevent duplicate filling if already on success page
     const url = browserPage.url();
     if (url.includes('confirmation') || url.includes('success')) {
-        return;
+        return { type: 'READY_TO_SUBMIT' };
     }
 
     let isLastStep = false;
@@ -112,9 +112,11 @@ export class WorkdayAdapter implements ApplicationAdapter {
           }
       }
     }
+
+    return { type: 'READY_TO_SUBMIT', submitLocator: '[data-automation-id="bottom-navigation-submit-button"], button:has-text("Submit"), input[type="submit"]' };
   }
 
-  async submit(page: unknown): Promise<SubmissionResult> {
+  async submit(page: unknown, submitLocator?: string): Promise<SubmissionResult> {
     const browserPage = page as Page;
 
     // Idempotency check before click
@@ -123,7 +125,11 @@ export class WorkdayAdapter implements ApplicationAdapter {
         return { confirmed: true, evidence: { confirmationUrl: initialUrl } };
     }
 
-    const submitButton = await browserPage.$('[data-automation-id="bottom-navigation-submit-button"], button:has-text("Submit"), input[type="submit"]');
+    if (!submitLocator) {
+      submitLocator = '[data-automation-id="bottom-navigation-submit-button"], button:has-text("Submit"), input[type="submit"]';
+    }
+
+    const submitButton = await browserPage.$(submitLocator);
     if (!submitButton) {
         throw new Error('MISSING_SELECTOR:submit_button');
     }
