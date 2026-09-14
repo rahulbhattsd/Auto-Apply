@@ -171,6 +171,7 @@ model Application {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   events         ApplicationEvent[]
+  executionCheckpoint ApplicationExecutionCheckpoint?
   notifications  Notification[]
 
   @@unique([candidateId, canonicalJobId])
@@ -272,4 +273,23 @@ model AuditLog {
   targetId   Int
   metadata   Json?
   createdAt  DateTime @default(now())
+}
+
+
+model ApplicationExecutionCheckpoint {
+  id                   Int      @id @default(autoincrement())
+  applicationId        Int      @unique
+  application          Application @relation(fields: [applicationId], references: [id])
+  executionAttempt     Int      @default(0)
+  adapter              String?
+  currentStep          Int      @default(0)
+  currentUrl           String?
+  lastAction           String?
+  currentOutcome       Json?
+  retryCount           Int      @default(0)
+  hasSubmitted         Boolean  @default(false)
+  submissionEvidence   Json?
+  recoverability       String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
