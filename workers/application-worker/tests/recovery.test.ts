@@ -66,9 +66,6 @@ test('Recovery Reconciliation Logic (No DB/Redis)', async (t) => {
         assert.strictEqual(decision.action, RecoveryAction.RESUME_FROM_CHECKPOINT);
     });
 
-    await browser.close();
-});
-
     await t.test('D. Human Verification Blocks Submission', async () => {
         const page = await context.newPage();
         await page.setContent('<html><body><iframe src="cloudflare-challenge"></iframe></body></html>');
@@ -89,3 +86,6 @@ test('Recovery Reconciliation Logic (No DB/Redis)', async (t) => {
         assert.ok(threw);
         await page.close();
     });
+
+    await browser.close();
+});
