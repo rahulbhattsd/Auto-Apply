@@ -2,10 +2,13 @@ import { Worker, QUEUE_NAMES, connection, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } 
 import { Queue } from '@autoapply/queue';
 import { prisma, recordDeadLetter } from '@autoapply/database';
 import { closeApplicationEngine, createEligibleApplication, transitionApplication } from '@autoapply/application-engine';
-import { AnalysisPipeline, GroqProvider } from '@autoapply/ai-analysis';
+import { AnalysisPipeline, GroqProvider, MockAIProvider } from '@autoapply/ai-analysis';
+import { env } from '@autoapply/config';
 
 const resumeQueue = new Queue(QUEUE_NAMES.RESUME_GENERATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
-const analysisPipeline = new AnalysisPipeline(new GroqProvider());
+const isMockAi = process.env['AI_PROVIDER'] === 'mock' || !env.GROQ_API_KEY || env.GROQ_API_KEY.startsWith('gsk_mock_') || env.NODE_ENV === 'test';
+const aiProvider = isMockAi ? new MockAIProvider() : new GroqProvider();
+const analysisPipeline = new AnalysisPipeline(aiProvider);
 
 const worker = new Worker(
   QUEUE_NAMES.JOB_ANALYSIS,

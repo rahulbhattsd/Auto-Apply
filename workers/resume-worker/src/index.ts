@@ -1,11 +1,12 @@
 import { Worker, QUEUE_NAMES, connection, Queue, RETRY_POLICIES, DEFAULT_JOB_OPTIONS } from '@autoapply/queue';
 import { closeApplicationEngine, transitionApplication } from '@autoapply/application-engine';
 import { prisma, recordDeadLetter } from '@autoapply/database';
-import { GroqProvider, ResumePdfCompiler } from '@autoapply/ai-analysis';
+import { GroqProvider, MockAIProvider, ResumePdfCompiler } from '@autoapply/ai-analysis';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { env } from '@autoapply/config';
 
-const aiProvider = new GroqProvider();
+const isMockAi = process.env['AI_PROVIDER'] === 'mock' || !env.GROQ_API_KEY || env.GROQ_API_KEY.startsWith('gsk_mock_') || env.NODE_ENV === 'test';
+const aiProvider = isMockAi ? new MockAIProvider() : new GroqProvider();
 const applicationQueue = new Queue(QUEUE_NAMES.APPLICATION, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 
 const worker = new Worker(
@@ -29,6 +30,8 @@ const worker = new Worker(
 
     if (application.status === 'QUEUED') {
       await transitionApplication(applicationId, 'RESUME_GENERATING');
+    } else if (application.status !== 'RESUME_GENERATING') {
+      throw new Error(`Application ${applicationId} is not in a valid state for resume generation; current status is ${application.status}`);
     }
 
     const candidateProfile = application.candidate;

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
+import { fetchApi } from '../lib/api';
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
@@ -7,23 +8,19 @@ export default function JobDetails() {
   const { data: response, isLoading } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch job');
-      return res.json();
+      return fetchApi(`/jobs/${id}`);
     }
   });
 
   const { data: versionsResponse, isLoading: versionsLoading } = useQuery({
     queryKey: ['job-versions', id],
     queryFn: async () => {
-      const jobRes = await fetch(`/api/jobs/${id}`);
-      const jobData = await jobRes.json();
-      const appId = jobData.job?.applications?.[0]?.id;
-      if (!appId) return { versions: [] };
+      // Fetch applications to find one matching this job
+      const appsData = await fetchApi('/applications');
+      const matchingApp = appsData.applications?.find((app: any) => app.jobId === Number(id)); // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (!matchingApp) return { versions: [] };
 
-      const res = await fetch(`/api/resumes/application/${appId}/versions`);
-      if (!res.ok) throw new Error('Failed to fetch resume versions');
-      return res.json();
+      return fetchApi(`/resumes/application/${matchingApp.id}/versions`);
     }
   });
 

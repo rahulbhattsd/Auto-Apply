@@ -116,8 +116,8 @@ const worker = new Worker(
         await transitionApplication(application.id, 'SUBMITTED', { submissionEvidence: checkpoint.submissionEvidence });
         return;
     }
-
-    const tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
+    let tempResumePath = '';
+    tempResumePath = await downloadResumeFromS3(applicationId, fileUrl);
     const browser = await chromium.launch({
       headless: env.PLAYWRIGHT_HEADLESS,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
@@ -389,8 +389,8 @@ const worker = new Worker(
       throw error;
     } finally {
       if (context) await context.close().catch(() => {});
-      if (browser.isConnected()) await browser.close();
-      if (fs.existsSync(tempResumePath)) {
+      if (browser?.isConnected()) await browser.close().catch(() => {});
+      if (tempResumePath && fs.existsSync(tempResumePath)) {
         fs.unlinkSync(tempResumePath);
       }
     }

@@ -38,7 +38,9 @@ async function getMessagingClients() {
 
 export async function closeApplicationEngine() {
   await notificationQueue?.close();
-  publisher?.disconnect();
+  notificationQueue = undefined;
+  await publisher?.quit();
+  publisher = undefined;
 }
 
 export async function transitionApplication(

@@ -17,34 +17,34 @@ test('PageObserver extracts fields correctly', async () => {
     `);
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const port = (server.address() as any).port;
 
   const agent = new BrowserAgent({ headless: true });
-  await agent.init();
-  await agent.getPage().goto(`http://localhost:${port}`);
+  try {
+    await agent.init();
+    await agent.getPage().goto(`http://127.0.0.1:${port}`);
 
-  const obs = await agent.observe();
+    const obs = await agent.observe();
 
-  assert.equal(obs.fields.length, 2);
-  const textInput = obs.fields.find(f => f.name === 'firstName');
-  assert.ok(textInput);
-  assert.equal(textInput?.type, 'text');
-  assert.equal(textInput?.value, 'John');
-  assert.equal(textInput?.locator, '#firstName');
+    assert.equal(obs.fields.length, 2);
+    const textInput = obs.fields.find(f => f.name === 'firstName');
+    assert.ok(textInput);
+    assert.equal(textInput?.type, 'text');
+    assert.equal(textInput?.value, 'John');
+    assert.equal(textInput?.locator, '#firstName');
 
-  const checkboxInput = obs.fields.find(f => f.name === 'agree');
-  assert.ok(checkboxInput);
-  assert.equal(checkboxInput?.type, 'checkbox');
-  assert.equal(checkboxInput?.value, true);
+    const checkboxInput = obs.fields.find(f => f.name === 'agree');
+    assert.ok(checkboxInput);
+    assert.equal(checkboxInput?.type, 'checkbox');
+    assert.equal(checkboxInput?.value, true);
 
-  assert.equal(obs.buttons.length, 1);
-  assert.equal(obs.buttons[0].text, 'Next');
-
-  await agent.close();
-
-  server.closeAllConnections();
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+    assert.equal(obs.buttons.length, 1);
+    assert.equal(obs.buttons[0].text, 'Next');
+  } finally {
+    await agent.close();
+    server.close();
+  }
 });
 
 test('PageObserver detects dynamic DOM changes', async () => {
@@ -59,27 +59,27 @@ test('PageObserver detects dynamic DOM changes', async () => {
     `);
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const port = (server.address() as any).port;
 
   const agent = new BrowserAgent({ headless: true });
-  await agent.init();
-  await agent.getPage().goto(`http://localhost:${port}`);
+  try {
+    await agent.init();
+    await agent.getPage().goto(`http://127.0.0.1:${port}`);
 
-  // Initial observation
-  let obs = await agent.observe();
-  assert.equal(obs.fields.length, 0);
+    // Initial observation
+    let obs = await agent.observe();
+    assert.equal(obs.fields.length, 0);
 
-  // Trigger DOM change
-  await agent.actions.click('#addBtn');
+    // Trigger DOM change
+    await agent.actions.click('#addBtn');
 
-  // Re-observe
-  obs = await agent.observe();
-  assert.equal(obs.fields.length, 1);
-  assert.equal(obs.fields[0].locator, '#dynamicInput');
-
-  await agent.close();
-
-  server.closeAllConnections();
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+    // Re-observe
+    obs = await agent.observe();
+    assert.equal(obs.fields.length, 1);
+    assert.equal(obs.fields[0].locator, '#dynamicInput');
+  } finally {
+    await agent.close();
+    server.close();
+  }
 });

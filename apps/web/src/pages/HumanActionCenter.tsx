@@ -9,7 +9,19 @@ export default function HumanActionCenter() {
     queryKey: ['applications-needs-human'],
     queryFn: async () => {
       const res = await fetchApi('/applications');
-      return { applications: res.applications.filter((a: any) => a.status === 'NEEDS_HUMAN') }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const needsHumanApps = res.applications.filter((a: any) => a.status === 'NEEDS_HUMAN' || a.status === 'AWAITING_HUMAN_VERIFICATION'); // eslint-disable-line @typescript-eslint/no-explicit-any
+      // Fetch full details (including events) for each NEEDS_HUMAN application
+      const detailed = await Promise.all(
+        needsHumanApps.map(async (a: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+          try {
+            const detail = await fetchApi(`/applications/${a.id}`);
+            return detail.application;
+          } catch {
+            return a; // fallback to summary if detail fetch fails
+          }
+        })
+      );
+      return { applications: detailed };
     }
   });
 

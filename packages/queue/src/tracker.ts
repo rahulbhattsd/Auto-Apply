@@ -1,8 +1,7 @@
 import { QueueEvents } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@autoapply/database';
 import { QUEUE_NAMES, connection } from './index.js';
 
-const prisma = new PrismaClient();
 
 export function setupJobTracker() {
   for (const qName of Object.values(QUEUE_NAMES)) {

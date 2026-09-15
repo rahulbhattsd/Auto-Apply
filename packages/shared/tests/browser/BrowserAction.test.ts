@@ -27,41 +27,45 @@ test('BrowserAction operations and verification', async () => {
     `);
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const port = (server.address() as any).port;
 
   const agent = new BrowserAgent({ headless: true });
-  await agent.init();
-  await agent.getPage().goto(`http://localhost:${port}`);
+  try {
+    await agent.init();
+    await agent.getPage().goto(`http://127.0.0.1:${port}`);
 
-  // Fill text
-  const fillResult = await agent.actions.fill('#name', 'Alice');
-  assert.equal(fillResult.success, true);
-  assert.equal(fillResult.verified, true);
+    // Fill text
+    const fillResult = await agent.actions.fill('#name', 'Alice');
+    assert.equal(fillResult.success, true);
+    assert.equal(fillResult.verified, true);
 
-  // Select option
-  const selectResult = await agent.actions.select('#country', 'uk');
-  assert.equal(selectResult.success, true);
-  assert.equal(selectResult.verified, true);
+    // Select option
+    const selectResult = await agent.actions.select('#country', 'uk');
+    assert.equal(selectResult.success, true);
+    assert.equal(selectResult.verified, true);
 
-  // Check checkbox
-  const checkResult = await agent.actions.check('#agree', true);
-  assert.equal(checkResult.success, true);
-  assert.equal(checkResult.verified, true);
+    // Check checkbox
+    const checkResult = await agent.actions.check('#agree', true);
+    assert.equal(checkResult.success, true);
+    assert.equal(checkResult.verified, true);
 
-  // Scroll
-  const scrollResult = await agent.actions.scroll('#scrollTarget');
-  assert.equal(scrollResult.success, true);
-  assert.equal(scrollResult.verified, true);
+    // Scroll
+    const scrollResult = await agent.actions.scroll('#scrollTarget');
+    assert.equal(scrollResult.success, true);
+    assert.equal(scrollResult.verified, true);
 
-  // Try on non-existent element
-  const badResult = await agent.actions.fill('#nonexistent', 'test');
-  assert.equal(badResult.success, false);
-  assert.equal(badResult.verified, false);
-
-  await agent.close();
-  server.closeAllConnections();
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+    // Try on non-existent element
+    const badResult = await agent.actions.fill('#nonexistent', 'test');
+    assert.equal(badResult.success, false);
+    assert.equal(badResult.verified, false);
+  } catch (e) {
+    console.error('BrowserAction test error:', e);
+    throw e;
+  } finally {
+    await agent.close();
+    server.close();
+  }
 });
 
 test('BrowserAction stale elements gracefully handled', async () => {
@@ -76,20 +80,24 @@ test('BrowserAction stale elements gracefully handled', async () => {
     `);
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const port = (server.address() as any).port;
 
   const agent = new BrowserAgent({ headless: true });
-  await agent.init();
-  await agent.getPage().goto(`http://localhost:${port}`);
+  try {
+    await agent.init();
+    await agent.getPage().goto(`http://127.0.0.1:${port}`);
 
-  // Element destroys itself on click, meaning next interaction fails gracefully
-  await agent.actions.click('#destroyBtn');
-  const result = await agent.actions.click('#destroyBtn');
+    // Element destroys itself on click, meaning next interaction fails gracefully
+    await agent.actions.click('#destroyBtn');
+    const result = await agent.actions.click('#destroyBtn');
 
-  assert.equal(result.success, false);
-
-  await agent.close();
-  server.closeAllConnections();
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+    assert.equal(result.success, false);
+  } catch (e) {
+    console.error('BrowserAction test error:', e);
+    throw e;
+  } finally {
+    await agent.close();
+    server.close();
+  }
 });

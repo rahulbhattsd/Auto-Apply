@@ -37,7 +37,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         successRate: totalApps > 0 ? Math.round((submittedApps / totalApps) * 100) : 0,
         failureRate: totalApps > 0 ? Math.round((failedApps / totalApps) * 100) : 0,
         humanInterventionRate: totalApps > 0 ? Math.round((humanApps / totalApps) * 100) : 0,
-        averageMatchScore: Math.round(analysisAgg._avg.matchScore || 0),
+        averageMatchScore: Math.round(analysisAgg._avg.matchScore ?? 0),
         applicationsBySource: sources,
     });
   });

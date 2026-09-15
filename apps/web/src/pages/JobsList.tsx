@@ -9,7 +9,10 @@ export default function JobsList() {
   const { data: jobsResponse, isLoading, refetch } = useQuery({
     queryKey: ['jobs', filters],
     queryFn: async () => {
-      const params = new URLSearchParams(filters);
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== '')
+      );
+      const params = new URLSearchParams(cleanFilters);
       return fetchApi(`/jobs?${params.toString()}`);
     }
   });

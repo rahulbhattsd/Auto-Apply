@@ -10,8 +10,8 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     const candidateId = profile?.id ?? -1;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const [
       jobsDiscoveredToday,

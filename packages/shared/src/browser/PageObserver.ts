@@ -10,6 +10,7 @@ export class PageObserver {
 
     // Evaluate in browser context to extract fields, buttons, links
     const observationData = await this.page.evaluate(() => {
+      (window as any).__name ||= (fn: any) => fn;
       const getVisibility = (el: HTMLElement) => {
         const style = window.getComputedStyle(el);
         return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetWidth > 0 && el.offsetHeight > 0;
