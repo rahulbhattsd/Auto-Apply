@@ -22,13 +22,30 @@ import metricsRoutes from './routes/metrics.js';
 import humanActionRoutes from './routes/human-action.js';
 
 export const buildApp = () => {
+  // Normalize origins: ensure they all have a scheme (Render's fromService
+  // host property returns bare hostnames like 'autoapply.onrender.com').
+  const normalizeOrigin = (raw: string): string => {
+    const trimmed = raw.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    // Assume HTTPS for bare Render hostnames
+    return `https://${trimmed}`;
+  };
+
   const allowedOrigins = env.ALLOWED_ORIGINS
-    ? env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+    ? env.ALLOWED_ORIGINS.split(',').map(normalizeOrigin).filter(Boolean)
     : [env.APP_URL];
+
+  // Always include APP_URL itself in allowed origins
+  if (env.APP_URL && !allowedOrigins.includes(env.APP_URL)) {
+    allowedOrigins.push(env.APP_URL);
+  }
 
   const fastify = Fastify({
     logger: env.NODE_ENV === 'development' ? { level: 'debug', transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss Z', ignore: 'pid,hostname' } } } : { level: 'info' },
     disableRequestLogging: true,
+    // Trust Render's load-balancer proxy (X-Forwarded-For, X-Forwarded-Proto)
+    trustProxy: true,
   });
 
   fastify.addHook('onRequest', (request, _reply, done) => { request.log.info({ reqId: request.id, method: request.method, url: request.url, service: 'api' }, 'received request'); done(); });
@@ -74,7 +91,10 @@ export const buildApp = () => {
   fastify.register(humanActionRoutes);
 
   if (env.SERVE_WEB) {
-    const webDistDir = path.resolve(__dirname, '../../web/dist');
+    // WEB_DIST_DIR can be set explicitly in Docker / Render to point at the
+    // copied web build. Falls back to the relative path for local dev.
+    const webDistDir = process.env['WEB_DIST_DIR']
+      ?? path.resolve(__dirname, '../../web/dist');
     if (fs.existsSync(path.join(webDistDir, 'index.html'))) {
       fastify.register(fastifyStatic, {
         root: webDistDir,

@@ -1,12 +1,15 @@
 services:
+  # ── API + Frontend (single container, SERVE_WEB=true) ─────────────────────
   - type: web
     name: autoapply
     runtime: docker
-    plan: 0.5c-512mb
+    plan: starter        # 0.5 CPU, 512 MB RAM is enough for API only
     region: singapore
     dockerfilePath: ./docker/api.Dockerfile
     dockerContext: .
-    preDeployCommand: pnpm db:migrate
+    # Runs inside the new container before it goes live.
+    # The api.Dockerfile includes prisma CLI so this works.
+    preDeployCommand: node node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 120
     envVars:
@@ -15,9 +18,11 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: PORT
-        value: "10000"
+        value: "3000"
       - key: SERVE_WEB
         value: "true"
+      - key: WEB_DIST_DIR
+        value: /app/apps/web/dist
       - key: DATABASE_URL
         fromDatabase:
           name: autoapply-db
@@ -33,6 +38,11 @@ services:
         value: "true"
       - key: COOKIE_SAME_SITE
         value: lax
+      # APP_URL and API_URL: fallback handled in packages/config/src/index.ts
+      # via RENDER_EXTERNAL_URL — no need to hard-code here.
+      # Set ALLOWED_ORIGINS to accept requests from the same Render URL.
+      - key: ALLOWED_ORIGINS
+        value: "" # left blank: RENDER_EXTERNAL_URL is used as fallback in config
       - key: MAX_APPLICATIONS_PER_DAY
         value: "25"
       - key: JOB_DISCOVERY_INTERVAL_MINUTES
@@ -64,27 +74,40 @@ services:
       - key: S3_SECRET_ACCESS_KEY
         sync: false
 
+  # ── Background Workers (Playwright + 6 BullMQ workers) ────────────────────
   - type: worker
     name: autoapply-worker
     runtime: docker
-    plan: standard # 1 CPU, 2GB RAM required for Playwright Chromium & 6 workers
+    plan: standard       # 1 CPU, 2 GB RAM required for Playwright Chromium + 6 workers
     region: singapore
     dockerfilePath: ./docker/worker.Dockerfile
     dockerContext: .
-    dockerCommand: pnpm run start:workers
     maxShutdownDelaySeconds: 120
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PLAYWRIGHT_HEADLESS
+        value: "true"
+      - key: PLAYWRIGHT_BROWSER
+        value: chromium
+      # Pull JWT_SECRET from the web service so they share the same key
       - key: JWT_SECRET
         fromService:
           type: web
           name: autoapply
           envVarKey: JWT_SECRET
+      # APP_URL / API_URL: derived at runtime from RENDER_EXTERNAL_URL in config
+      # but we must provide them explicitly since the worker is a separate service.
       - key: APP_URL
-        value: https://autoapply.onrender.com
+        fromService:
+          type: web
+          name: autoapply
+          property: host
       - key: API_URL
-        value: https://autoapply.onrender.com/api
-      - key: NODE_ENV
-        value: production
+        fromService:
+          type: web
+          name: autoapply
+          property: host
       - key: DATABASE_URL
         fromDatabase:
           name: autoapply-db
@@ -100,10 +123,6 @@ services:
         value: "30"
       - key: MAX_CONCURRENT_APPLICATIONS
         value: "2"
-      - key: PLAYWRIGHT_HEADLESS
-        value: "true"
-      - key: PLAYWRIGHT_BROWSER
-        value: chromium
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
@@ -127,6 +146,26 @@ services:
       - key: S3_SECRET_ACCESS_KEY
         sync: false
 
+  # ── Mock-ATS (staging / QA only — comment out for production) ─────────────
+  # This service simulates real career portals for end-to-end testing.
+  # Deploy it only in staging environments, NOT in production.
+  # Uncomment and set MOCK_ATS_CAPTCHA=never for automated test runs.
+  #
+  # - type: web
+  #   name: autoapply-mock-ats
+  #   runtime: docker
+  #   plan: free
+  #   region: singapore
+  #   dockerfilePath: ./docker/mock-ats.Dockerfile
+  #   dockerContext: .
+  #   healthCheckPath: /health
+  #   envVars:
+  #     - key: MOCK_ATS_PORT
+  #       value: "4000"
+  #     - key: MOCK_ATS_CAPTCHA
+  #       value: never
+
+  # ── Redis (BullMQ) ─────────────────────────────────────────────────────────
   - type: keyvalue
     name: autoapply-redis
     plan: 256mb
@@ -137,7 +176,7 @@ services:
 
 databases:
   - name: autoapply-db
-    plan: 0.5c-1g
+    plan: starter        # 0.5 CPU, 1 GB RAM, 1 GB SSD (free tier → starter for prod)
     region: singapore
     databaseName: autoapply
     user: autoapply

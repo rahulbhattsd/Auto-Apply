@@ -37,10 +37,35 @@ const envSchema = z.object({
 });
 
 const renderExternalUrl = process.env['RENDER_EXTERNAL_URL'];
+
+// On Render, RENDER_EXTERNAL_URL is the full public URL of the service
+// (e.g. https://autoapply.onrender.com). We use it as fallback for all
+// URL-shaped env vars when they are not explicitly provided.
+const renderOrigin = renderExternalUrl
+  ? renderExternalUrl.replace(/\/$/, '')   // strip trailing slash
+  : undefined;
+
+/** Ensure a URL has a scheme. Render's fromService host property gives bare hostnames. */
+const withScheme = (raw: string | undefined): string | undefined => {
+  if (!raw) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return `https://${raw}`;
+};
+
 const normalizedEnv = {
   ...process.env,
-  APP_URL: process.env['APP_URL'] || renderExternalUrl,
-  API_URL: process.env['API_URL'] || renderExternalUrl,
+  APP_URL: withScheme(process.env['APP_URL'] || renderOrigin),
+  API_URL: withScheme(process.env['API_URL'] || renderOrigin),
+  // Workers get APP_URL from the web service's host property, which Render
+  // sets to a bare hostname (no scheme). Prefix it if needed.
+  ALLOWED_ORIGINS: (() => {
+    const explicit = process.env['ALLOWED_ORIGINS'];
+    // If explicitly set and non-empty, use it as-is.
+    if (explicit && explicit.trim().length > 0) return explicit;
+    // Otherwise build from the Render URL — this means same-origin requests
+    // from the bundled frontend will always be allowed.
+    return renderOrigin ?? undefined;
+  })(),
 };
 
 const _env = envSchema.safeParse(normalizedEnv);

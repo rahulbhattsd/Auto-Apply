@@ -188,6 +188,23 @@ services:
     depends_on: *worker-depends
     command: pnpm --filter @autoapply/notification-worker dev
 
+
+  mock-ats:
+    build:
+      context: .
+      dockerfile: docker/mock-ats.Dockerfile
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      MOCK_ATS_PORT: 4000
+      MOCK_ATS_HOST: 0.0.0.0
+      MOCK_ATS_CAPTCHA: random
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:
