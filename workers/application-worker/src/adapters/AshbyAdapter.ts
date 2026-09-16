@@ -24,7 +24,7 @@ export class AshbyAdapter implements ApplicationAdapter {
       throw new Error('CAPTCHA_DETECTED');
     }
 
-    const mfaElements = await browserPage.$$('input[name*="code"], input[name*="mfa"]');
+    const mfaElements = await browserPage.$$('input[name*="code" i], input[name*="mfa" i], input[name*="otp" i], input[id*="otp" i], input[name*="2fa" i], input[autocomplete="one-time-code"]');
     if (mfaElements.length > 0) {
       throw new Error('MFA_DETECTED');
     }

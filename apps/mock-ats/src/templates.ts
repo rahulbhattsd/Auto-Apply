@@ -237,3 +237,40 @@ export function confirmationHtml({ job, applicationId, ats }: ConfirmationOpts):
 </body>
 </html>`;
 }
+
+/** Simulated OTP / MFA verification challenge page */
+export function otpHtml({ job, ats, board }: CaptchaOpts): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Verification Required | ${job.company}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+    .box { background:#fff; border-radius:12px; padding:40px; text-align:center; max-width:420px; box-shadow:0 4px 20px rgba(0,0,0,.08); border:1px solid #e2e8f0; }
+    .icon { font-size:48px; margin-bottom:12px; }
+    h2 { color:#0f172a; margin-bottom:8px; }
+    p { color:#64748b; font-size:14px; margin-bottom:24px; line-height:1.5; }
+    label { display:block; font-size:13px; font-weight:600; text-align:left; margin-bottom:6px; color:#334155; }
+    input { width:100%; box-sizing:border-box; padding:12px; font-size:18px; letter-spacing:4px; text-align:center; border:2px solid #cbd5e1; border-radius:8px; margin-bottom:20px; font-family:monospace; }
+    input:focus { border-color:#2563eb; outline:none; }
+    button { background:#2563eb; color:#fff; border:none; padding:12px 24px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; width:100%; }
+    button:hover { background:#1d4ed8; }
+    .note { font-size:11px; color:#94a3b8; margin-top:16px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="icon">🔐</div>
+    <h2>Two-Step Verification</h2>
+    <p>We've sent a one-time verification code (OTP) to your email/phone to verify your application for <strong>${job.title}</strong> at <strong>${job.company}</strong>.</p>
+    <form method="POST" action="/${ats}/${board}/jobs/${job.id}/verify-otp">
+      <label for="otp_code">Enter 6-Digit Code</label>
+      <input type="text" id="otp_code" name="otp_code" maxlength="6" placeholder="000000" autocomplete="one-time-code" required />
+      <button type="submit">Verify & Continue</button>
+    </form>
+    <p class="note">Mock ATS: OTP / MFA simulation. Set MOCK_ATS_OTP=never to bypass.</p>
+  </div>
+</body>
+</html>`;
+}

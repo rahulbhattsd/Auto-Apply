@@ -96,6 +96,16 @@ export function shouldShowCaptcha(jobId?: string): boolean {
   return Math.random() < 0.1;
 }
 
+// ── OTP / MFA simulation ──────────────────────────────────────────────────────
+/**
+ * Configurable via MOCK_ATS_OTP ('always', 'never', or random).
+ */
+export function shouldShowOtp(jobId?: string): boolean {
+  if (process.env.MOCK_ATS_OTP === 'always') return true;
+  if (process.env.MOCK_ATS_OTP === 'never') return false;
+  return false;
+}
+
 // ── Errors ────────────────────────────────────────────────────────────────────
 /** Test helper: clear all submitted applications and the applied set (called by admin panel) */
 export function _clearApplications(): void {

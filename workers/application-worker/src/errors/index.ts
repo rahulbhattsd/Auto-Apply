@@ -57,7 +57,7 @@ export function classifyError(error: unknown): ErrorClassification {
 
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
-  if (message.includes('captcha') || message.includes('cloudflare') || message.includes('mfa') || message.includes('human')) {
+  if (message.includes('captcha') || message.includes('cloudflare') || message.includes('mfa') || message.includes('human') || message.includes('otp') || message.includes('2fa')) {
     return { category: ErrorCategory.HUMAN_VERIFICATION_REQUIRED, retryable: false, resumable: true, needsHuman: true, terminal: false };
   }
 
