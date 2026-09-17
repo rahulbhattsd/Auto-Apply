@@ -8,7 +8,7 @@ import { z } from 'zod';
 export class MockAIProvider implements AIProvider {
   name = 'mock';
 
-  async generateResponse(messages: ChatMessage[], _options?: AIOptions): Promise<string> {
+  async generateResponse(messages: ChatMessage[], /* _options */ _options?: AIOptions): Promise<string> {
     const lastUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
     const lower = lastUserMessage.toLowerCase();
 
@@ -42,8 +42,8 @@ export class MockAIProvider implements AIProvider {
 
   async generateStructuredOutput<T>(
     messages: ChatMessage[],
-    _schema: z.ZodSchema<T>,
-    _options?: AIOptions
+    /* _schema */ _schema: z.ZodSchema<T>,
+    /* _options */ _options?: AIOptions
   ): Promise<T> {
     const lastMsg = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
     return {
