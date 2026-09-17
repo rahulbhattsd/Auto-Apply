@@ -109,7 +109,13 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         });
       }
 
-      return reply.send(conversation);
+      return reply.send({
+        ...conversation,
+        messages: conversation.messages.map((m) => ({
+          ...m,
+          role: m.role.toLowerCase(),
+        })),
+      });
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({
@@ -172,7 +178,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         message: {
           id: result.messageId,
           conversationId: convId,
-          role: result.role,
+          role: result.role.toLowerCase(),
           content: result.content,
           toolsUsed: result.toolsUsed,
           memoriesRetrieved: result.memoriesRetrieved,

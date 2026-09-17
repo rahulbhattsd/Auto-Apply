@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --env-file=../../.env.test --test --test-force-exit tests/**/*.test.ts"
+    "test": "tsx --env-file=../../.env.test --test --test-concurrency=1 --test-force-exit tests/**/*.test.ts"
   },
   "dependencies": {
     "@autoapply/ai-analysis": "workspace:*",

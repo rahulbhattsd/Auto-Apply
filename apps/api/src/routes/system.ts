@@ -2,8 +2,18 @@ import { FastifyInstance } from 'fastify';
 import { getWorkerHeartbeats } from '@autoapply/queue';
 import { defaultToolRegistry } from '../services/tools/index.js';
 import { verifyToken } from '../middleware/auth.js';
+import { env } from '@autoapply/config';
 
 export default async function systemRoutes(fastify: FastifyInstance) {
+  // GET /api/system/status - overall system status and AI provider info
+  fastify.get('/status', async (_request, reply) => {
+    return reply.send({
+      status: 'ok',
+      aiProvider: env.AI_PROVIDER,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  });
   // GET /api/system/workers - real-time worker heartbeats and health
   fastify.get('/workers', async (_request, reply) => {
     try {

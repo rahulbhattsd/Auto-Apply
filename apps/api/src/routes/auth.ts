@@ -75,7 +75,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
       if (existingUser) {
-        return reply.status(400).send({
+        return reply.status(409).send({
           success: false,
           error: { code: 'EMAIL_IN_USE', message: 'An account with this email already exists' },
         });

@@ -74,7 +74,7 @@ export class MemoryService {
       prisma.memory.count({ where }),
     ]);
 
-    return { items, total, limit, offset };
+    return { memories: items, items, total, limit, offset };
   }
 
   async getMemoryById(userId: number, id: number) {

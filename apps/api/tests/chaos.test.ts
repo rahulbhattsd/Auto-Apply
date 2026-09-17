@@ -11,8 +11,12 @@ test('Chaos Testing - Worker Crash Recovery & Dead Letter Recording', async (t) 
   const job = await queue.add('test-crash-job', { data: 'test payload' }, { attempts: 1 });
   let failedEventFired = false;
   let promiseResolve: () => void;
-  const testDonePromise = new Promise<void>((resolve) => {
+  const testDonePromise = new Promise<void>((resolve, reject) => {
     promiseResolve = resolve;
+    setTimeout(
+      () => reject(new Error('chaos test timed out: worker failed event never fired after 30s')),
+      30000
+    );
   });
 
   const worker = new Worker(
