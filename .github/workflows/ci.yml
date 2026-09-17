@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "jules*" ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, "jules*" ]
 
 jobs:
   test:
@@ -75,7 +75,9 @@ jobs:
         docker run --network host --entrypoint /bin/sh minio/mc:latest -c "
         /usr/bin/mc config host add myminio http://127.0.0.1:9000 minioadmin minioadmin;
         /usr/bin/mc mb myminio/autoapply-resumes || true;
-        /usr/bin/mc anonymous set public myminio/autoapply-resumes;
+        /usr/bin/mc mb myminio/agent-storage || true;
+        /usr/bin/mc anonymous set public myminio/autoapply-resumes || true;
+        /usr/bin/mc anonymous set public myminio/agent-storage || true;
         "
 
     - name: Generate Prisma Client
