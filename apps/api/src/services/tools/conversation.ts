@@ -37,11 +37,20 @@ export const conversationSearchTool: AgentTool<z.infer<typeof inputSchema>> = {
         },
       });
 
+interface SearchMessageRecord {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: Date;
+  conversation: { title: string };
+}
+
       return {
         toolName: 'conversation_search',
         success: true,
         data: {
-          messages: messages.map(m => ({
+          messages: (messages as SearchMessageRecord[]).map((m: SearchMessageRecord) => ({
             id: m.id,
             conversationTitle: m.conversation.title,
             role: m.role,
