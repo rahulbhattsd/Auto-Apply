@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <div id="root">
+        <form>
+            <input aria-required="true" data-automation-id="legalNameSection_firstName" id="first_name" />
+            <input aria-required="true" data-automation-id="legalNameSection_lastName" id="last_name" />
+            <input aria-required="true" data-automation-id="email" id="email" />
+            <input type="file" data-automation-id="file-upload-input-ref" />
+
+            <div data-automation-id="eeo-section">
+                <label for="gender-decline">I decline to answer</label>
+                <input type="radio" id="gender-decline" name="gender" aria-required="true" />
+            </div>
+
+            <button data-automation-id="bottom-navigation-next-button">Next</button>
+            <button data-automation-id="bottom-navigation-submit-button" style="display:none">Submit</button>
+        </form>
+    </div>
+    <script>
+        document.querySelector('[data-automation-id="bottom-navigation-next-button"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.target.style.display = 'none';
+            document.querySelector('[data-automation-id="bottom-navigation-submit-button"]').style.display = 'block';
+        });
+        document.querySelector('[data-automation-id="bottom-navigation-submit-button"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.body.innerHTML = '<h1>Congratulations</h1><p>Application Submitted</p>';
+        });
+    </script>
+</body>
+</html>

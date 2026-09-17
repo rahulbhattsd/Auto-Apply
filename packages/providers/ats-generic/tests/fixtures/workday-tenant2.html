@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <div id="main">
+        <form id="workday-form">
+            <input aria-required="true" data-automation-id="legalNameSection_firstName" />
+            <input aria-required="true" data-automation-id="legalNameSection_lastName" />
+            <input aria-required="true" data-automation-id="email" />
+
+            <select aria-required="true" data-automation-id="veteran-status">
+                <option value="">Select...</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="decline">I Prefer Not to Answer</option>
+            </select>
+
+            <button type="button" data-automation-id="bottom-navigation-next-button">Continue</button>
+        </form>
+    </div>
+    <script>
+        document.querySelector('[data-automation-id="bottom-navigation-next-button"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.body.innerHTML = '<button data-automation-id="bottom-navigation-submit-button">Submit Application</button>';
+            setTimeout(() => {
+                document.querySelector('[data-automation-id="bottom-navigation-submit-button"]').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.body.innerHTML = '<h2>Thank You</h2>';
+                });
+            }, 10);
+        });
+    </script>
+</body>
+</html>

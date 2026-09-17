@@ -372,6 +372,83 @@ importers:
         specifier: ^8.0.0
         version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
 
+  packages/providers/ats-generic:
+    dependencies:
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@autoapply/providers-core':
+        specifier: workspace:*
+        version: link:../core
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      playwright:
+        specifier: ^1.45.0
+        version: 1.63.0
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../../eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../../typescript-config
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.5
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.5(jiti@1.21.7)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
+  packages/providers/core:
+    dependencies:
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      playwright:
+        specifier: ^1.45.0
+        version: 1.63.0
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../../eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../../typescript-config
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.5
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.5(jiti@1.21.7)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
   packages/queue:
     dependencies:
       '@autoapply/config':
@@ -2626,6 +2703,16 @@ packages:
   pirates@4.0.7:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
     engines: {node: '>= 6'}
+
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   pnpm@9.0.0:
     resolution: {integrity: sha512-tBBnB8ciWxdIthWVlTzL6/+XtUrQXQAqo2NfYzucU81mb3zpuLxEcE8foEi5pJtVNxqy2enWZ9Hv4u8VFLzVEw==}
@@ -5267,6 +5354,12 @@ snapshots:
       thread-stream: 3.2.0
 
   pirates@4.0.7: {}
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   pnpm@9.0.0: {}
 

@@ -1,0 +1,31 @@
+{
+  "name": "@autoapply/providers-ats-generic",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@autoapply/config": "workspace:*",
+    "@autoapply/providers-core": "workspace:*",
+    "@autoapply/shared": "workspace:*",
+    "playwright": "^1.45.0"
+  },
+  "devDependencies": {
+    "@autoapply/eslint-config": "workspace:^",
+    "@autoapply/typescript-config": "workspace:*",
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
