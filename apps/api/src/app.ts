@@ -18,6 +18,8 @@ import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
 import metricsRoutes from './routes/metrics.js';
 import eventsRoutes from './routes/events.js';
+import jobRoutes from './routes/jobs.js';
+import applicationsRoutes from './routes/applications.js';
 
 export const buildApp = () => {
   const normalizeOrigin = (raw: string): string => {
@@ -91,11 +93,13 @@ export const buildApp = () => {
     app.register(authRoutes);
   }, { prefix: '/api/auth' });
 
-  // Personal AI Agent routes
+  // Personal AI Agent & Job Application routes
   fastify.register(profileRoutes, { prefix: '/api/profile' });
   fastify.register(chatRoutes, { prefix: '/api/chat' });
   fastify.register(memoryRoutes, { prefix: '/api/memory' });
   fastify.register(tasksRoutes, { prefix: '/api/tasks' });
+  fastify.register(jobRoutes, { prefix: '/api/jobs' });
+  fastify.register(applicationsRoutes, { prefix: '/api/applications' });
   fastify.register(systemRoutes, { prefix: '/api/system' });
   fastify.register(dashboardRoutes);
   fastify.register(metricsRoutes);
@@ -103,7 +107,7 @@ export const buildApp = () => {
 
   // Health and Readiness checks
   fastify.get('/api/health', async (_request, reply) => {
-    return reply.send({ status: 'ok', service: 'personal-ai-agent-api', timestamp: new Date().toISOString() });
+    return reply.send({ status: 'ok', service: 'autoapply-api', timestamp: new Date().toISOString() });
   });
 
   if (env.SERVE_WEB) {

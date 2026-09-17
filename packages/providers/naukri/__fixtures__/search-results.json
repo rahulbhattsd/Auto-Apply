@@ -1,0 +1,29 @@
+{
+  "noOfJobs": 2,
+  "jobDetails": [
+    {
+      "jobId": "060925900001",
+      "title": "AI Engineer",
+      "companyName": "Acme Technologies",
+      "placeholders": [
+        { "type": "experience", "label": "0-2 Yrs" },
+        { "type": "salary", "label": "Not disclosed" },
+        { "type": "location", "label": "Bengaluru, Pune" }
+      ],
+      "jdURL": "/job-listings-ai-engineer-acme-060925900001",
+      "footerPlaceholderLabel": "3 Days Ago",
+      "jobDescription": "Build and ship LLM agent pipelines."
+    },
+    {
+      "jobId": "060925900002",
+      "title": "Backend Engineer",
+      "companyName": "Globex Corp",
+      "placeholders": [
+        { "type": "experience", "label": "1-3 Yrs" },
+        { "type": "location", "label": "Hyderabad" }
+      ],
+      "jdURL": "/job-listings-backend-engineer-globex-060925900002",
+      "footerPlaceholderLabel": "1 Day Ago"
+    }
+  ]
+}

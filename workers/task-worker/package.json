@@ -8,16 +8,20 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint \"src/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@autoapply/ai-analysis": "workspace:*",
     "@autoapply/config": "workspace:*",
     "@autoapply/database": "workspace:*",
+    "@autoapply/providers-ats-generic": "workspace:*",
+    "@autoapply/providers-core": "workspace:*",
     "@autoapply/queue": "workspace:*",
     "@autoapply/shared": "workspace:*",
     "bullmq": "^5.12.0",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "playwright": "^1.45.0"
   },
   "devDependencies": {
     "@autoapply/eslint-config": "workspace:^",

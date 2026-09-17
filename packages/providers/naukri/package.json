@@ -1,15 +1,10 @@
 {
-  "name": "@autoapply/providers-core",
+  "name": "@autoapply/providers-naukri",
   "version": "1.0.0",
   "type": "module",
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./testing/*.js": { "types": "./src/testing/*.ts", "default": "./src/testing/*.ts" },
-    "./testing/*": { "types": "./src/testing/*.ts", "default": "./src/testing/*.ts" }
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -19,6 +14,7 @@
   },
   "dependencies": {
     "@autoapply/config": "workspace:*",
+    "@autoapply/providers-core": "workspace:*",
     "@autoapply/shared": "workspace:*",
     "playwright": "^1.45.0"
   },

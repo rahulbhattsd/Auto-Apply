@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "REPLACE_ME",
+  "loggedInMarker": "[data-test='site-header-profile']",
+  "loginWall": "[data-test='authModal'], #HardsellOverlay",
+  "cloudflare": "#challenge-running, [data-translate='checking_browser']",
+  "job": {
+    "title": "[data-test='job-title']",
+    "company": "[data-test='employer-name']",
+    "location": "[data-test='location']",
+    "description": "[class*='JobDetails_jobDescription']"
+  },
+  "apply": {
+    "easyApplyButton": "[data-test='easyApply']",
+    "employerSiteButton": "[data-test='applyButton']",
+    "alreadyApplied": "[data-test='already-applied']"
+  }
+}

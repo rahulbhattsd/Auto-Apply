@@ -6,3 +6,11 @@ coverage
 .turbo
 *.log
 uploads/
+.pnpm-store
+.corepack
+dump.rdb
+*.rdb
+test-results/
+playwright-report/
+blob-report/
+

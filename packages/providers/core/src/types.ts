@@ -1,6 +1,6 @@
 import type { BrowserContext } from 'playwright';
 
-export type ProviderId = 'naukri' | 'linkedin' | 'ats-generic';
+export type ProviderId = 'naukri' | 'glassdoor' | 'linkedin' | 'ats-generic';
 
 export type ApplyType = 'INTERNAL' | 'EXTERNAL' | 'SKIPPED';
 

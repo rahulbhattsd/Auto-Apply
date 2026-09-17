@@ -449,6 +449,86 @@ importers:
         specifier: ^8.0.0
         version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
 
+  packages/providers/glassdoor:
+    dependencies:
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@autoapply/providers-core':
+        specifier: workspace:*
+        version: link:../core
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      playwright:
+        specifier: ^1.45.0
+        version: 1.63.0
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../../eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../../typescript-config
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.5
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.5(jiti@1.21.7)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
+  packages/providers/naukri:
+    dependencies:
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@autoapply/providers-core':
+        specifier: workspace:*
+        version: link:../core
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      playwright:
+        specifier: ^1.45.0
+        version: 1.63.0
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../../eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../../typescript-config
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.5
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.5(jiti@1.21.7)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.0.0
+        version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
   packages/queue:
     dependencies:
       '@autoapply/config':
@@ -579,6 +659,12 @@ importers:
       '@autoapply/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@autoapply/providers-ats-generic':
+        specifier: workspace:*
+        version: link:../../packages/providers/ats-generic
+      '@autoapply/providers-core':
+        specifier: workspace:*
+        version: link:../../packages/providers/core
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -591,6 +677,9 @@ importers:
       ioredis:
         specifier: ^5.4.1
         version: 5.11.1
+      playwright:
+        specifier: ^1.45.0
+        version: 1.63.0
     devDependencies:
       '@autoapply/eslint-config':
         specifier: workspace:^

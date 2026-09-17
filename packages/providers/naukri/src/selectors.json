@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 3,
+  "recordedAt": "REPLACE_ME",
+  "note": "Every Naukri DOM selector lives here. A redesign is a config PR, not a refactor.",
+  "loggedInMarker": ".nI-gNb-drawer__bars",
+  "loginRedirect": "form[name='login-form']",
+  "job": {
+    "title": ".styles_jd-header-title__rZwM1",
+    "company": ".styles_jd-header-comp-name__MvqAI",
+    "experience": ".styles_jhc__exp__k_giM",
+    "salary": ".styles_jhc__salary__jdfEC",
+    "location": ".styles_jhc__location__W_pVs",
+    "description": ".styles_JDC__dang-inner-html__h0K4t",
+    "postedOn": ".styles_jhc__stat__PgY67"
+  },
+  "apply": {
+    "internalButton": "#apply-button",
+    "externalButton": "#company-site-button",
+    "alreadyApplied": ".already-applied",
+    "confirmation": ".apply-message"
+  },
+  "questionnaire": {
+    "container": ".chatbot_DrawerContentWrapper",
+    "questionText": ".botMsg",
+    "textInput": ".chatbot_InputContainer",
+    "radioOption": ".ssrc__radio-btn-container",
+    "saveButton": ".sendMsgbtn_container"
+  },
+  "search": {
+    "resultCard": ".srp-jobtuple-wrapper",
+    "resultTitle": ".title",
+    "resultCompany": ".comp-name"
+  },
+  "blockers": {
+    "captcha": "iframe[src*='recaptcha']",
+    "otp": "#otpField"
+  }
+}

@@ -8,16 +8,23 @@ generator client {
 }
 
 model User {
-  id             Int             @id @default(autoincrement())
-  email          String          @unique
-  hashedPassword String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  profile        UserProfile?
-  conversations  Conversation[]
-  memories       Memory[]
-  tasks          Task[]
-  auditLogs      AuditLog[]
+  id               Int                @id @default(autoincrement())
+  email            String             @unique
+  hashedPassword   String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  profile          UserProfile?
+  candidateProfile CandidateProfile?
+  resumes          Resume[]
+  policy           ApplicationPolicy?
+  automation       AutomationConfig?
+  conversations    Conversation[]
+  memories         Memory[]
+  tasks            Task[]
+  auditLogs        AuditLog[]
+  providerAccounts ProviderAccount[]
+  answerBanks      AnswerBank[]
+  rateBudgets      RateBudget[]
 }
 
 model UserProfile {
@@ -30,6 +37,306 @@ model UserProfile {
   preferences Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model CandidateProfile {
+  id                 Int             @id @default(autoincrement())
+  userId             Int             @unique
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String?
+  phone              String?
+  location           String?
+  linkedin           String?
+  github             String?
+  portfolio          String?
+  gender             String?
+  dateOfBirth        String?
+  alternatePhone     String?
+  education          Json?
+  experience         Json?
+  skills             Json?
+  projects           Json?
+  certifications     Json?
+  preferredRoles     String[]
+  preferredLocations String[]
+  remotePreference   String?
+  minimumSalary      Int?
+  maximumSalary      Int?
+  employmentTypes    String[]
+  workAuthorization  String?
+  noticePeriod       String?
+  applications       Application[]
+  resumeVersions     ResumeVersion[]
+}
+
+model Resume {
+  id              Int             @id @default(autoincrement())
+  userId          Int
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName        String
+  fileUrl         String
+  isMaster        Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  derivedVersions ResumeVersion[]
+}
+
+model ApplicationPolicy {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetRoles           String[]
+  targetTechnologies    String[]
+  preferredCompanies    String[]
+  excludedCompanies     String[]
+  excludedKeywords      String[]
+  minimumMatchScore     Int?
+  maxApplicationsPerDay Int?
+  autoApplyEnabled      Boolean  @default(false)
+}
+
+model JobSource {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  config    Json?
+  jobs      Job[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  website     String?
+  description String?
+  jobs        Job[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Job {
+  id                   Int             @id @default(autoincrement())
+  externalId           String?
+  sourceId             Int?
+  source               JobSource?      @relation(fields: [sourceId], references: [id])
+  title                String
+  companyId            Int?
+  company              Company?        @relation(fields: [companyId], references: [id])
+  location             String?
+  remoteType           String?
+  description          String
+  url                  String
+  employmentType       String?
+  salaryMin            Int?
+  salaryMax            Int?
+  currency             String?
+  postedAt             DateTime        @default(now())
+  skills               String[]
+  canonicalFingerprint String          @unique
+  provider             String?
+  providerJobId        String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  analysis             JobAnalysis?
+  applications         Application[]
+  resumeVersions       ResumeVersion[]
+
+  @@unique([provider, providerJobId])
+  @@index([sourceId])
+  @@index([companyId])
+}
+
+model JobAnalysis {
+  id              Int      @id @default(autoincrement())
+  jobId           Int      @unique
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  matchScore      Int
+  recommendation  String
+  skillsMatched   String[]
+  skillsMissing   String[]
+  experienceMatch String?
+  educationMatch  String?
+  locationMatch   String?
+  reasoning       String
+  createdAt       DateTime @default(now())
+
+  @@index([matchScore])
+}
+
+enum ApplicationStatus {
+  DISCOVERED
+  ANALYZING
+  REJECTED
+  MATCHED
+  QUEUED
+  RESUME_GENERATING
+  READY_TO_APPLY
+  APPLYING
+  SUBMITTED
+  VERIFYING
+  VERIFIED
+  FAILED
+  RETRYING
+  NEEDS_HUMAN
+  AWAITING_HUMAN_VERIFICATION
+  CANCELLED
+}
+
+model Application {
+  id                  Int                            @id @default(autoincrement())
+  candidateId         Int
+  candidate           CandidateProfile               @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId               Int
+  job                 Job                            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  canonicalJobId      String
+  status              ApplicationStatus              @default(DISCOVERED)
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  events              ApplicationEvent[]
+  executionCheckpoint ApplicationExecutionCheckpoint?
+  notifications       Notification[]
+  resumeVersions      ResumeVersion[]
+  attempts            ApplicationAttempt[]
+
+  @@unique([candidateId, canonicalJobId])
+  @@index([candidateId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ApplicationAttempt {
+  id            String      @id @default(cuid())
+  applicationId Int
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  provider      String
+  status        String
+  reason        String?
+  screenshotKey String?
+  htmlKey       String?
+  requestPath   Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+}
+
+model CandidateDailyApplicationCount {
+  id          Int      @id @default(autoincrement())
+  candidateId Int
+  date        DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([candidateId, date])
+}
+
+model ApplicationEvent {
+  id            Int         @id @default(autoincrement())
+  applicationId Int
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  jobId         Int
+  eventType     String
+  payload       Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+}
+
+model AutomationConfig {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoApplyEnabled Boolean   @default(false)
+  workerStatus     String    @default("STOPPED")
+  lastDiscoveryRun DateTime?
+  nextDiscoveryRun DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model ResumeVersion {
+  id                    Int              @id @default(autoincrement())
+  candidateId           Int
+  candidate             CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId                 Int
+  job                   Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicationId         Int
+  application           Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  basedOnMasterResumeId Int
+  basedOnMasterResume   Resume           @relation(fields: [basedOnMasterResumeId], references: [id], onDelete: Cascade)
+  version               Int              @default(1)
+  content               Json
+  coverLetter           String?
+  createdAt             DateTime         @default(now())
+
+  @@unique([applicationId, version])
+}
+
+model Notification {
+  id                   Int          @id @default(autoincrement())
+  type                 String
+  recipient            String
+  payload              Json?
+  relatedApplicationId Int?
+  application          Application? @relation(fields: [relatedApplicationId], references: [id])
+  sentAt               DateTime     @default(now())
+  readAt               DateTime?
+}
+
+model ApplicationExecutionCheckpoint {
+  id                 Int         @id @default(autoincrement())
+  applicationId      Int         @unique
+  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  executionAttempt   Int         @default(0)
+  adapter            String?
+  currentStep        Int         @default(0)
+  currentUrl         String?
+  lastAction         String?
+  currentOutcome     Json?
+  retryCount         Int         @default(0)
+  hasSubmitted       Boolean     @default(false)
+  submissionEvidence Json?
+  recoverability     String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model ProviderAccount {
+  id           String    @id @default(cuid())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String
+  status       String
+  sessionBlob  Bytes?
+  sessionIv    Bytes?
+  sessionTag   Bytes?
+  keyVersion   Int       @default(1)
+  fingerprint  Json?
+  lastProbedAt DateTime?
+
+  @@unique([userId, provider])
+}
+
+model AnswerBank {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  source    String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+}
+
+model RateBudget {
+  id           String @id @default(cuid())
+  userId       Int
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String
+  windowDate   String
+  appliesUsed  Int    @default(0)
+  searchesUsed Int    @default(0)
+
+  @@unique([userId, provider, windowDate])
 }
 
 model Conversation {

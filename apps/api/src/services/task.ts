@@ -3,7 +3,15 @@ import { agentTaskQueue, RETRY_POLICIES } from '@autoapply/queue';
 import { NotFoundError, ForbiddenError } from '@autoapply/shared';
 
 export interface CreateTaskOptions {
-  type: 'AI_TASK' | 'RESEARCH_TASK' | 'MEMORY_TASK' | 'NOTIFICATION_TASK' | 'MAINTENANCE_TASK';
+  type:
+    | 'AI_TASK'
+    | 'RESEARCH_TASK'
+    | 'MEMORY_TASK'
+    | 'NOTIFICATION_TASK'
+    | 'MAINTENANCE_TASK'
+    | 'DISCOVERY_TASK'
+    | 'APPLICATION_TASK'
+    | 'VERIFICATION_TASK';
   payload?: Record<string, unknown> | undefined;
   jobId?: string | undefined;
 }
