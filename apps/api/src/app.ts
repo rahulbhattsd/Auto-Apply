@@ -107,7 +107,7 @@ export const buildApp = () => {
 
   // Health and Readiness checks
   fastify.get('/api/health', async (_request, reply) => {
-    return reply.send({ status: 'ok', service: 'autoapply-api', timestamp: new Date().toISOString() });
+    return reply.send({ status: 'ok', service: 'personal-ai-agent-api', timestamp: new Date().toISOString() });
   });
 
   if (env.SERVE_WEB) {
