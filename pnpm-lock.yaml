@@ -81,21 +81,18 @@ importers:
       '@autoapply/ai-analysis':
         specifier: workspace:*
         version: link:../../packages/ai-analysis
-      '@autoapply/application-engine':
-        specifier: workspace:*
-        version: link:../../packages/application-engine
       '@autoapply/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@autoapply/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@autoapply/job-discovery':
-        specifier: workspace:*
-        version: link:../../packages/job-discovery
       '@autoapply/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@aws-sdk/client-s3':
         specifier: ^3.1128.0
         version: 3.1128.0
@@ -791,6 +788,46 @@ importers:
       typescript-eslint:
         specifier: ^8.0.0
         version: 8.68.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+
+  workers/task-worker:
+    dependencies:
+      '@autoapply/ai-analysis':
+        specifier: workspace:*
+        version: link:../../packages/ai-analysis
+      '@autoapply/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@autoapply/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@autoapply/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
+      '@autoapply/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      bullmq:
+        specifier: ^5.12.0
+        version: 5.81.4
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.11.1
+    devDependencies:
+      '@autoapply/eslint-config':
+        specifier: workspace:^
+        version: link:../../packages/eslint-config
+      '@autoapply/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsx:
+        specifier: ^4.0.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
 
   workers/verification-worker:
     dependencies:

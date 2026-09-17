@@ -12,19 +12,19 @@ export class S3StorageProvider implements StorageProvider {
 
   constructor() {
     this.s3 = new S3Client({
-      endpoint: env.S3_ENDPOINT,
+      endpoint: env.S3_ENDPOINT || 'http://localhost:9000',
       region: 'auto',
-      forcePathStyle: true, // Crucial for Minio and local testing
+      forcePathStyle: true,
       credentials: {
-        accessKeyId: env.S3_ACCESS_KEY_ID,
-        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        accessKeyId: env.S3_ACCESS_KEY_ID || 'minioadmin',
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY || 'minioadmin',
       },
     });
-    this.bucket = env.S3_BUCKET;
+    this.bucket = env.S3_BUCKET || 'agent-storage';
   }
 
   async uploadFile(file: MultipartFile, userId: number): Promise<{ url: string; fileName: string }> {
-    const objectKey = `resumes/${userId}/${Date.now()}-${file.filename}`;
+    const objectKey = `uploads/${userId}/${Date.now()}-${file.filename}`;
 
     const chunks = [];
     for await (const chunk of file.file) {
@@ -32,11 +32,13 @@ export class S3StorageProvider implements StorageProvider {
     }
     const buffer = Buffer.concat(chunks);
 
-    await this.s3.send(new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: objectKey,
-      Body: buffer,
-    }));
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: objectKey,
+        Body: buffer,
+      })
+    );
 
     return {
       url: objectKey,

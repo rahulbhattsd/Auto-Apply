@@ -1,41 +1,44 @@
-import path from 'path';
-import { config } from 'dotenv';
-config({ path: path.resolve(process.cwd(), '../../.env.example') });
-import { describe, it, before, after } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert';
 import { buildApp } from '../src/app.js';
-import { FastifyInstance } from 'fastify';
+import { prisma } from '@autoapply/database';
 
-describe('Dashboard Endpoint', () => {
-  let app: FastifyInstance;
+test('Personal AI Agent Dashboard Telemetry', async (t) => {
+  const app = buildApp();
+  await app.ready();
 
-  before(async () => {
-    app = buildApp();
-    await app.ready();
+  const testEmail = `dashboard-test-${Date.now()}@example.com`;
+  const password = 'Password123!';
+
+  const regRes = await app.inject({
+    method: 'POST',
+    url: '/api/auth/register',
+    payload: { email: testEmail, password },
   });
+  const cookie = regRes.headers['set-cookie'] as string;
 
-  after(async () => {
-    await app.close();
-  });
-
-  it('should return valid JSON metrics for dashboard', async () => {
-    const response = await app.inject({
+  await t.test('GET /api/dashboard returns stats, recent items, and system health', async () => {
+    const res = await app.inject({
       method: 'GET',
       url: '/api/dashboard',
-      headers: {
-        'x-user-id': '1'
-      }
+      headers: { cookie },
     });
 
-    if (response.statusCode !== 200) {
-      console.log('Error payload:', response.payload);
-    }
-
-    assert.strictEqual(response.statusCode, 200);
-    const data = response.json();
-    assert.ok(data.metrics !== undefined);
-    assert.strictEqual(typeof data.metrics.jobsDiscoveredToday, 'number');
-    assert.ok(data.charts !== undefined);
-    assert.ok(Array.isArray(data.charts.statusDistribution));
+    assert.strictEqual(res.statusCode, 200);
+    const body = JSON.parse(res.payload);
+    assert.strictEqual(body.success, true);
+    assert.ok(body.user);
+    assert.ok(body.stats);
+    assert.strictEqual(typeof body.stats.totalConversations, 'number');
+    assert.strictEqual(typeof body.stats.totalMemories, 'number');
+    assert.ok(body.stats.tasks);
+    assert.ok(Array.isArray(body.recentConversations));
+    assert.ok(Array.isArray(body.recentTasks));
+    assert.ok(body.systemHealth);
+    assert.strictEqual(body.systemHealth.status, 'ok');
   });
+
+  // Cleanup
+  await prisma.user.deleteMany({ where: { email: testEmail } });
+  await app.close();
 });

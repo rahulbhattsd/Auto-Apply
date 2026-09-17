@@ -1,124 +1,76 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma, Prisma } from '@autoapply/database';
-import { verifyToken } from '../middleware/auth';
+import { verifyToken } from '../middleware/auth.js';
 
-const text = z.string().trim().min(1);
-const educationSchema = z.array(z.object({
-  institution: text,
-  degree: text.optional(),
-  field: text.optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-}).passthrough());
-const experienceSchema = z.array(z.object({
-  company: text,
-  role: text,
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  description: z.string().optional(),
-  achievements: z.array(z.string()).optional(),
-  technologies: z.array(z.string()).optional(),
-}).passthrough());
-const projectSchema = z.array(z.object({
-  name: text,
-  description: z.string().optional(),
-  technologies: z.array(z.string()).optional(),
-  url: z.string().url().optional(),
-}).passthrough());
-const certificationSchema = z.array(z.object({
-  name: text,
-  issuer: text.optional(),
-  issuedAt: z.string().optional(),
-  expiresAt: z.string().optional(),
-}).passthrough());
-
-const profileSchema = z.object({
-  name: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  location: z.string().nullable().optional(),
-  linkedin: z.string().nullable().optional(),
-  github: z.string().nullable().optional(),
-  portfolio: z.string().nullable().optional(),
-  gender: z.string().nullable().optional(),
-  dateOfBirth: z.string().nullable().optional(),
-  alternatePhone: z.string().nullable().optional(),
-  education: educationSchema.nullable().optional(),
-  experience: experienceSchema.nullable().optional(),
-  skills: z.array(z.string().trim().min(1)).nullable().optional(),
-  projects: projectSchema.nullable().optional(),
-  certifications: certificationSchema.nullable().optional(),
-  preferredRoles: z.array(z.string()).optional().default([]),
-  preferredLocations: z.array(z.string()).optional().default([]),
-  remotePreference: z.string().nullable().optional(),
-  minimumSalary: z.number().nullable().optional(),
-  maximumSalary: z.number().nullable().optional(),
-  employmentTypes: z.array(z.string()).optional().default([]),
-  workAuthorization: z.string().nullable().optional(),
-  noticePeriod: z.string().nullable().optional(),
+const profileUpdateSchema = z.object({
+  displayName: z.string().trim().min(1).max(100).nullable().optional(),
+  bio: z.string().max(2000).nullable().optional(),
+  timezone: z.string().min(1).max(50).nullable().optional(),
+  preferences: z.record(z.unknown()).nullable().optional(),
 });
 
 export default async function profileRoutes(fastify: FastifyInstance) {
   fastify.addHook('preValidation', verifyToken);
 
+  // GET /api/profile
   fastify.get('/', async (request, reply) => {
     const userId = request.user!.id;
     try {
-      const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+      let profile = await prisma.userProfile.findUnique({ where: { userId } });
       if (!profile) {
-        return reply.status(404).send({ success: false, error: { code: 'ERROR', message: 'Profile not found' } });
+        // Create default profile if not exists
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        profile = await prisma.userProfile.create({
+          data: {
+            userId,
+            displayName: user?.email.split('@')[0] || 'User',
+            timezone: 'UTC',
+          },
+        });
       }
       return reply.send(profile);
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
+      return reply.status(500).send({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch profile' } });
     }
   });
 
+  // PUT /api/profile
   fastify.put('/', async (request, reply) => {
     const userId = request.user!.id;
     try {
-      const data = profileSchema.parse(request.body);
+      const data = profileUpdateSchema.parse(request.body);
 
-      const safeData = {
-          ...data,
-          name: data.name ?? null,
-          phone: data.phone ?? null,
-          location: data.location ?? null,
-          linkedin: data.linkedin ?? null,
-          github: data.github ?? null,
-          portfolio: data.portfolio ?? null,
-          gender: data.gender ?? null,
-          dateOfBirth: data.dateOfBirth ?? null,
-          alternatePhone: data.alternatePhone ?? null,
-          remotePreference: data.remotePreference ?? null,
-          minimumSalary: data.minimumSalary ?? null,
-          maximumSalary: data.maximumSalary ?? null,
-          workAuthorization: data.workAuthorization ?? null,
-          noticePeriod: data.noticePeriod ?? null,
-          education: data.education === undefined ? Prisma.DbNull : (data.education ?? []) as Prisma.InputJsonValue,
-          experience: data.experience === undefined ? Prisma.DbNull : (data.experience ?? []) as Prisma.InputJsonValue,
-          skills: data.skills === undefined ? Prisma.DbNull : (data.skills ?? []) as Prisma.InputJsonValue,
-          projects: data.projects === undefined ? Prisma.DbNull : (data.projects ?? []) as Prisma.InputJsonValue,
-          certifications: data.certifications === undefined ? Prisma.DbNull : (data.certifications ?? []) as Prisma.InputJsonValue,
-      };
-
-      const profile = await prisma.candidateProfile.upsert({
+      const profile = await prisma.userProfile.upsert({
         where: { userId },
-        update: safeData,
+        update: {
+          ...(data.displayName !== undefined ? { displayName: data.displayName } : {}),
+          ...(data.bio !== undefined ? { bio: data.bio } : {}),
+          ...(data.timezone !== undefined ? { timezone: data.timezone || 'UTC' } : {}),
+          ...(data.preferences !== undefined
+            ? { preferences: (data.preferences === null ? Prisma.DbNull : data.preferences) as Prisma.InputJsonValue }
+            : {}),
+        },
         create: {
-            userId,
-            ...safeData,
+          userId,
+          displayName: data.displayName || 'User',
+          bio: data.bio || null,
+          timezone: data.timezone || 'UTC',
+          ...(data.preferences ? { preferences: data.preferences as Prisma.InputJsonValue } : {}),
         },
       });
 
       return reply.send(profile);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return reply.status(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: error.errors } });
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: error.errors },
+        });
       }
       fastify.log.error(error);
-      return reply.status(500).send({ success: false, error: { code: 'ERROR', message: 'Internal server error' } });
+      return reply.status(500).send({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update profile' } });
     }
   });
 }

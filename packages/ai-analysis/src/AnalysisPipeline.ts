@@ -1,7 +1,37 @@
-import { Job, CandidateProfile, ApplicationPolicy } from '@prisma/client';
-import { AIProvider } from './AIProvider';
-import { prisma } from '@autoapply/database';
+import { AIProvider } from './AIProvider.js';
 import { z } from 'zod';
+
+export interface Job {
+  id?: number;
+  title: string;
+  companyId?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  description: string;
+  location?: string | null;
+  remoteType?: string | null;
+  skills?: string[];
+  employmentType?: string | null;
+  company?: { name: string } | null;
+}
+
+export interface CandidateProfile {
+  id?: number;
+  userId?: number;
+  minimumSalary?: number | null;
+  preferredRoles?: string[];
+  preferredLocations?: string[];
+  employmentTypes?: string[];
+  skills?: unknown;
+  experience?: unknown;
+  education?: unknown;
+}
+
+export interface ApplicationPolicy {
+  excludedCompanies: string[];
+  excludedKeywords: string[];
+  minimumMatchScore?: number | null;
+}
 
 const candidateArraySchema = z.array(z.record(z.unknown())).nullable().optional();
 const skillsSchema = z.array(z.string()).catch([]);
@@ -15,11 +45,10 @@ export class AnalysisPipeline {
    */
   async runDeterministicFilter(job: Job, profile: CandidateProfile, policy: ApplicationPolicy | null): Promise<string | null> {
     if (policy) {
-      if (job.companyId) {
-         const company = await prisma.company.findUnique({ where: { id: job.companyId } });
-         if (company && policy.excludedCompanies.some(c => c.toLowerCase() === company.name.toLowerCase())) {
-           return 'Excluded company';
-         }
+      if (job.company?.name) {
+        if (policy.excludedCompanies.some((c: string) => c.toLowerCase() === job.company!.name.toLowerCase())) {
+          return 'Excluded company';
+        }
       }
 
       if (policy.excludedKeywords.length > 0) {
@@ -39,8 +68,8 @@ export class AnalysisPipeline {
       }
 
       // Employment type check
-      if (profile.employmentTypes.length > 0 && job.employmentType) {
-        if (!profile.employmentTypes.some(t => t.toLowerCase() === job.employmentType!.toLowerCase())) {
+      if (profile.employmentTypes && profile.employmentTypes.length > 0 && job.employmentType) {
+        if (!profile.employmentTypes.some((t: string) => t.toLowerCase() === job.employmentType!.toLowerCase())) {
           return `Employment type mismatch: ${job.employmentType}`;
         }
       }
@@ -52,65 +81,41 @@ export class AnalysisPipeline {
   /**
    * Run the full pipeline for a job.
    */
-  async processJob(jobId: number, profileId: number) {
-    const job = await prisma.job.findUnique({ where: { id: jobId }, include: { company: true } });
-    if (!job) throw new Error('Job not found');
-
-    const profile = await prisma.candidateProfile.findUnique({ where: { id: profileId }, include: { user: { include: { policy: true } } } });
-    if (!profile) throw new Error('Profile not found');
-
-    const policy = profile.user.policy;
-
+  async processJob(job: Job, profile: CandidateProfile, policy: ApplicationPolicy | null) {
     // Stage 1: Deterministic Filter
     const rejectionReason = await this.runDeterministicFilter(job, profile, policy);
 
     if (rejectionReason) {
-      return prisma.jobAnalysis.upsert({
-        where: { jobId: job.id },
-        update: {
-          matchScore: 0,
-          recommendation: 'REJECT',
-          skillsMatched: [],
-          skillsMissing: [],
-          reasoning: `Deterministic Filter: ${rejectionReason}`,
-        },
-        create: {
-          jobId: job.id,
-          matchScore: 0,
-          recommendation: 'REJECT',
-          skillsMatched: [],
-          skillsMissing: [],
-          reasoning: `Deterministic Filter: ${rejectionReason}`,
-        }
-      });
+      return {
+        matchScore: 0,
+        recommendation: 'REJECT',
+        skillsMatched: [],
+        skillsMissing: [],
+        reasoning: `Deterministic Filter: ${rejectionReason}`,
+      };
+    }
+
+    if (!this.aiProvider.analyzeJob) {
+      throw new Error('AI Provider does not implement analyzeJob');
     }
 
     // Stage 2: AI Analysis
-    const result = await this.aiProvider.analyzeJob(
+    return this.aiProvider.analyzeJob(
       {
         skills: skillsSchema.parse(profile.skills),
         experience: candidateArraySchema.parse(profile.experience) ?? [],
         education: candidateArraySchema.parse(profile.education) ?? [],
-        preferredRoles: profile.preferredRoles,
-        preferredLocations: profile.preferredLocations,
+        preferredRoles: profile.preferredRoles || [],
+        preferredLocations: profile.preferredLocations || [],
       },
       {
         title: job.title,
         company: job.company?.name || 'Unknown',
         description: job.description,
-        location: job.location,
-        remoteType: job.remoteType,
-        skills: job.skills,
+        location: job.location || null,
+        remoteType: job.remoteType || null,
+        skills: job.skills || [],
       }
     );
-
-    return prisma.jobAnalysis.upsert({
-      where: { jobId: job.id },
-      update: result,
-      create: {
-        jobId: job.id,
-        ...result,
-      }
-    });
   }
 }

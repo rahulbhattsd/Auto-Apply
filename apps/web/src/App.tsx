@@ -3,15 +3,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
-import JobsList from './pages/JobsList';
-import JobDetails from './pages/JobDetails';
-import ApplicationsList from './pages/ApplicationsList';
-import ApplicationDetails from './pages/ApplicationDetails';
-import HumanActionCenter from './pages/HumanActionCenter';
-import HumanActionView from './pages/HumanActionView';
-import Analytics from './pages/Analytics';
+import ChatPage from './pages/ChatPage';
+import MemoryPage from './pages/MemoryPage';
+import TasksPage from './pages/TasksPage';
+import SettingsPage from './pages/SettingsPage';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 export default function App() {
   return (
@@ -22,13 +26,12 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/jobs" element={<JobsList />} />
-          <Route path="/jobs/:id" element={<JobDetails />} />
-          <Route path="/applications" element={<ApplicationsList />} />
-          <Route path="/applications/:id" element={<ApplicationDetails />} />
-          <Route path="/human-actions" element={<HumanActionCenter />} />
-          <Route path="/human-actions/:id" element={<HumanActionView />} />
-          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:id" element={<ChatPage />} />
+          <Route path="/memory" element={<MemoryPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

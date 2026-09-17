@@ -1,177 +1,347 @@
-import { useAuth } from '../hooks/useAuth';
-import { Navigate } from 'react-router-dom';
-import ProfileForm from '../components/ProfileForm';
-import PolicyForm from '../components/PolicyForm';
-import ResumeUpload from '../components/ResumeUpload';
-import ActivityFeed from '../components/ActivityFeed';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import Layout from '../components/Layout';
 import { fetchApi } from '../lib/api';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface DashboardResponse {
+  success: boolean;
+  user: {
+    name: string;
+    email: string;
+    timezone: string;
+  };
+  stats: {
+    totalConversations: number;
+    totalMemories: number;
+    tasks: {
+      QUEUED: number;
+      RUNNING: number;
+      COMPLETED: number;
+      FAILED: number;
+      CANCELLED: number;
+    };
+    activeWorkers: number;
+  };
+  recentConversations: Array<{
+    id: number;
+    title: string;
+    updatedAt: string;
+    _count: { messages: number };
+  }>;
+  recentTasks: Array<{
+    id: number;
+    type: string;
+    status: string;
+    createdAt: string;
+  }>;
+  workers: Array<{
+    workerId: string;
+    workerType: string;
+    status: string;
+    timestamp: number;
+  }>;
+  systemHealth: {
+    status: string;
+    database: string;
+    workersHealthy: boolean;
+  };
+}
 
 export default function Dashboard() {
-  const { user, isLoading: authLoading, logout } = useAuth();
-  const queryClient = useQueryClient();
-
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+  const { data, isLoading, error } = useQuery<DashboardResponse>({
     queryKey: ['dashboard'],
-    queryFn: async () => {
-      const data = await fetchApi('/dashboard');
-      return data;
-    },
-    refetchInterval: 30000,
+    queryFn: () => fetchApi('/dashboard'),
+    refetchInterval: 15000,
   });
 
-  const { data: autoConfig, isLoading: autoLoading } = useQuery({
-    queryKey: ['automation'],
-    queryFn: async () => {
-      const data = await fetchApi('/automation');
-      return data;
-    },
-    refetchInterval: 30000,
-  });
-
-  const startMutation = useMutation({
-    mutationFn: () => fetchApi('/automation/start', { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['automation'] })
-  });
-
-  const pauseMutation = useMutation({
-    mutationFn: () => fetchApi('/automation/pause', { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['automation'] })
-  });
-
-  if (authLoading || dashboardLoading || autoLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex h-64 items-center justify-center">
+          <div className="flex items-center gap-3 text-gray-400">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+            <span>Loading dashboard overview...</span>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (error || !data) {
+    return (
+      <Layout>
+        <div className="rounded-xl border border-red-800/50 bg-red-950/40 p-6 text-center text-red-200">
+          <p className="text-base font-semibold">Unable to load dashboard</p>
+          <p className="mt-1 text-sm text-red-300">
+            {error instanceof Error ? error.message : 'Please ensure the API service is online.'}
+          </p>
+        </div>
+      </Layout>
+    );
   }
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const { user, stats, recentConversations, recentTasks, workers, systemHealth } = data;
+
+  const totalTasks =
+    (stats?.tasks?.QUEUED || 0) +
+    (stats?.tasks?.RUNNING || 0) +
+    (stats?.tasks?.COMPLETED || 0) +
+    (stats?.tasks?.FAILED || 0) +
+    (stats?.tasks?.CANCELLED || 0);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-indigo-600">AutoApply Dashboard</h1>
+    <Layout>
+      <div className="space-y-6">
+        {/* Welcome Header */}
+        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-gray-800 bg-gradient-to-r from-gray-900 via-indigo-950/40 to-gray-900 p-6 sm:flex-row sm:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Autonomous Assistant Ready</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <a href="/applications" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Applications</a>
-              <a href="/jobs" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Jobs</a>
-              <a href="/human-actions" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Human Action Center</a>
-              <a href="/analytics" className="text-sm font-medium text-gray-700 hover:text-indigo-600">Analytics</a>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-700 mr-4">Logged in as Candidate</span>
-              <button onClick={() => logout()} className="text-sm font-medium text-gray-500 hover:text-gray-700">Logout</button>
-            </div>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Welcome back, {user?.name || 'Agent User'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-400">
+              Personal AI assistant is active, persistent memory synced, background workers operational.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/chat"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
+            >
+              <span>💬</span> New Chat
+            </Link>
+            <Link
+              to="/tasks"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700 transition-colors"
+            >
+              <span>⚡</span> Run Task
+            </Link>
           </div>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Conversations */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wider text-gray-400">Conversations</span>
+              <span className="rounded-md bg-indigo-900/50 p-2 text-indigo-300">💬</span>
+            </div>
+            <div className="mt-4 flex items-baseline justify-between">
+              <p className="text-3xl font-bold text-white">{stats?.totalConversations || 0}</p>
+              <Link to="/chat" className="text-xs font-medium text-indigo-400 hover:text-indigo-300">
+                View chats &rarr;
+              </Link>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">Persistent multi-turn interactions</p>
+          </div>
 
-        {autoConfig && (
-            <div className="bg-white p-6 rounded-lg shadow px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center border-l-4 border-indigo-500">
-                <div>
-                    <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                        Automation Engine
-                        <span className={`ml-3 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                            autoConfig.status === 'RUNNING' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                            {autoConfig.status}
-                        </span>
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Applications Today: <span className="font-semibold text-gray-700">{autoConfig.applicationsToday} / {autoConfig.limit}</span>
-                    </p>
-                    <div className="text-sm text-gray-500 mt-1 flex space-x-4">
-                        <span>Queues:</span>
-                        {Object.entries(autoConfig.queueDepths).map(([q, depth]) => (
-                            <span key={q} className="font-medium text-gray-700">{q}: {depth as number}</span>
-                        ))}
+          {/* Card 2: Memories */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wider text-gray-400">Memory Vault</span>
+              <span className="rounded-md bg-purple-900/50 p-2 text-purple-300">🧠</span>
+            </div>
+            <div className="mt-4 flex items-baseline justify-between">
+              <p className="text-3xl font-bold text-white">{stats?.totalMemories || 0}</p>
+              <Link to="/memory" className="text-xs font-medium text-purple-400 hover:text-purple-300">
+                Manage memory &rarr;
+              </Link>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">Facts, preferences & project notes</p>
+          </div>
+
+          {/* Card 3: Background Tasks */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wider text-gray-400">Tasks Processed</span>
+              <span className="rounded-md bg-amber-900/50 p-2 text-amber-300">⚡</span>
+            </div>
+            <div className="mt-4 flex items-baseline justify-between">
+              <p className="text-3xl font-bold text-white">{totalTasks}</p>
+              <Link to="/tasks" className="text-xs font-medium text-amber-400 hover:text-amber-300">
+                Inspect queue &rarr;
+              </Link>
+            </div>
+            <div className="mt-2 flex gap-2 text-xs">
+              <span className="text-emerald-400">{stats?.tasks?.COMPLETED || 0} done</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-blue-400">{stats?.tasks?.RUNNING || 0} running</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-red-400">{stats?.tasks?.FAILED || 0} failed</span>
+            </div>
+          </div>
+
+          {/* Card 4: Worker Engine */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wider text-gray-400">Active Workers</span>
+              <span className="rounded-md bg-emerald-900/50 p-2 text-emerald-300">🤖</span>
+            </div>
+            <div className="mt-4 flex items-baseline justify-between">
+              <p className="text-3xl font-bold text-white">{stats?.activeWorkers || 0}</p>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  systemHealth?.workersHealthy
+                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                    : 'bg-yellow-950 text-yellow-400 border border-yellow-800'
+                }`}
+              >
+                {systemHealth?.workersHealthy ? 'ONLINE' : 'STANDBY'}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">Redis heartbeat monitored</p>
+          </div>
+        </div>
+
+        {/* Two-column Recent Activity */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Recent Conversations */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-200 flex items-center gap-2">
+                <span>💬</span> Recent Conversations
+              </h2>
+              <Link to="/chat" className="text-xs text-indigo-400 hover:text-indigo-300">
+                View All
+              </Link>
+            </div>
+
+            <div className="mt-4 divide-y divide-gray-800">
+              {recentConversations && recentConversations.length > 0 ? (
+                recentConversations.map((conv) => (
+                  <Link
+                    key={conv.id}
+                    to={`/chat/${conv.id}`}
+                    className="flex items-center justify-between py-3 hover:bg-gray-800/50 px-2 rounded-lg transition-colors"
+                  >
+                    <div className="min-w-0 flex-1 pr-4">
+                      <p className="truncate text-sm font-medium text-white">{conv.title}</p>
+                      <p className="text-xs text-gray-400">
+                        {conv._count.messages} messages • {new Date(conv.updatedAt).toLocaleDateString()}
+                      </p>
                     </div>
+                    <span className="text-gray-500 text-sm">&rarr;</span>
+                  </Link>
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-gray-500">
+                  No conversations yet. Click "New Chat" to begin.
                 </div>
-                <div className="mt-4 sm:mt-0 flex space-x-3">
-                    <button
-                        onClick={() => startMutation.mutate()}
-                        disabled={startMutation.isPending || autoConfig.status === 'RUNNING'}
-                        className="px-4 py-2 bg-indigo-600 text-white font-medium rounded hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                        {startMutation.isPending ? 'Starting...' : 'Start'}
-                    </button>
-                    <button
-                        onClick={() => pauseMutation.mutate()}
-                        disabled={pauseMutation.isPending || autoConfig.status === 'STOPPED'}
-                        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded hover:bg-gray-50 disabled:opacity-50"
-                    >
-                        {pauseMutation.isPending ? 'Pausing...' : 'Pause'}
-                    </button>
-                </div>
-            </div>
-        )}
-
-        {dashboardData && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 sm:px-0">
-            <div className="bg-white p-6 rounded-lg shadow border-b-4 border-blue-500">
-              <h3 className="text-sm font-medium text-gray-500">Jobs Discovered Today</h3>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">{dashboardData.metrics.jobsDiscoveredToday}</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow border-b-4 border-yellow-500">
-              <h3 className="text-sm font-medium text-gray-500">Applications Pending</h3>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">{dashboardData.metrics.applicationsPending}</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow border-b-4 border-red-500">
-              <h3 className="text-sm font-medium text-gray-500">Needs Human</h3>
-              <p className="mt-2 text-3xl font-semibold text-red-600">{dashboardData.metrics.humanActionsRequired}</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow border-b-4 border-green-500">
-              <h3 className="text-sm font-medium text-gray-500">Success Rate</h3>
-              <p className="mt-2 text-3xl font-semibold text-green-600">{dashboardData.metrics.successRate}%</p>
+              )}
             </div>
           </div>
-        )}
 
-        <div className="px-4 sm:px-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ActivityFeed />
+          {/* Recent Background Tasks */}
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-200 flex items-center gap-2">
+                <span>⚡</span> Background Tasks
+              </h2>
+              <Link to="/tasks" className="text-xs text-amber-400 hover:text-amber-300">
+                Manage Queue
+              </Link>
+            </div>
 
-          {dashboardData && dashboardData.charts.statusDistribution.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Application Status Distribution</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={dashboardData.charts.statusDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} // eslint-disable-line @typescript-eslint/no-explicit-any
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
+            <div className="mt-4 divide-y divide-gray-800">
+              {recentTasks && recentTasks.length > 0 ? (
+                recentTasks.map((t) => {
+                  const statusColors: Record<string, string> = {
+                    COMPLETED: 'bg-emerald-950 text-emerald-400 border-emerald-800',
+                    RUNNING: 'bg-blue-950 text-blue-400 border-blue-800',
+                    QUEUED: 'bg-amber-950 text-amber-400 border-amber-800',
+                    FAILED: 'bg-red-950 text-red-400 border-red-800',
+                    CANCELLED: 'bg-gray-800 text-gray-400 border-gray-700',
+                  };
+                  return (
+                    <div key={t.id} className="flex items-center justify-between py-3 px-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-gray-300">Task #{t.id}</span>
+                          <span className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-300 font-medium">
+                            {t.type}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-400">{new Date(t.createdAt).toLocaleTimeString()}</p>
+                      </div>
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                          statusColors[t.status] || 'bg-gray-800 text-gray-300'
+                        }`}
                       >
-                        {dashboardData.charts.statusDistribution.map((_entry: any, index: number) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                          const fill = COLORS[index % COLORS.length] || '#8884d8';
-                          return <Cell key={`cell-${index}`} fill={fill} />;
-                        })}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                        {t.status}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-sm text-gray-500">
+                  No background tasks recorded yet.
                 </div>
-              </div>
-          )}
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="px-4 sm:px-0 space-y-6">
-          <ProfileForm />
-          <PolicyForm />
-          <ResumeUpload />
+        {/* Worker Telemetry Card */}
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+          <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-200 flex items-center gap-2">
+              <span>🤖</span> Worker Heartbeats & Health
+            </h2>
+            <span className="text-xs text-gray-400">Auto-refreshed via Redis</span>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-300">
+              <thead className="bg-gray-950/60 uppercase text-gray-400 border-b border-gray-800">
+                <tr>
+                  <th className="px-4 py-2">Worker ID</th>
+                  <th className="px-4 py-2">Type</th>
+                  <th className="px-4 py-2">Heartbeat Status</th>
+                  <th className="px-4 py-2">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {workers && workers.length > 0 ? (
+                  workers.map((w) => (
+                    <tr key={w.workerId} className="hover:bg-gray-800/40">
+                      <td className="px-4 py-2.5 font-mono text-gray-200">{w.workerId}</td>
+                      <td className="px-4 py-2.5">{w.workerType}</td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                            w.status === 'HEALTHY'
+                              ? 'bg-emerald-950 text-emerald-400'
+                              : w.status === 'BUSY'
+                              ? 'bg-blue-950 text-blue-400'
+                              : 'bg-yellow-950 text-yellow-400'
+                          }`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                          {w.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-400">
+                        {new Date(w.timestamp).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                      No worker heartbeats registered in Redis currently. Run <code className="text-indigo-400">pnpm worker:all</code> to launch workers.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

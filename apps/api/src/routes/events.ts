@@ -2,22 +2,28 @@ import { FastifyInstance } from 'fastify';
 import { FastifySSEPlugin } from 'fastify-sse-v2';
 import Redis from 'ioredis';
 import { env } from '@autoapply/config';
-import { verifyToken } from '../middleware/auth';
+import { verifyToken } from '../middleware/auth.js';
 
 export default async function eventsRoutes(fastify: FastifyInstance) {
   await fastify.register(FastifySSEPlugin);
+
   fastify.get('/api/events', { preHandler: [verifyToken] }, async (request, reply) => {
     const userId = request.user!.id;
-    const channel = `application-events:${userId}`;
+    const channel = `agent-events:${userId}`;
 
-    const subscriber = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null, lazyConnect: true });
-    await subscriber.connect();
-    await subscriber.subscribe(channel);
-
+    let subscriber: Redis | undefined;
     let keepAliveTimeout: NodeJS.Timeout;
 
+    try {
+      subscriber = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true });
+      await subscriber.connect();
+      await subscriber.subscribe(channel);
+    } catch (err) {
+      fastify.log.warn(`[SSE] Redis subscriber failed to connect: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
     reply.raw.on('close', () => {
-      subscriber.disconnect();
+      if (subscriber) subscriber.disconnect();
       clearTimeout(keepAliveTimeout);
     });
 
@@ -28,15 +34,17 @@ export default async function eventsRoutes(fastify: FastifyInstance) {
 
       reply.raw.on('close', () => {
         isClosed = true;
-        resolve(''); // unblock the loop
+        resolve('');
       });
 
-      subscriber.on('message', (ch: string, message: string) => {
-        if (ch === channel) {
-          resolve(message);
-          nextPromise = new Promise(r => resolve = r);
-        }
-      });
+      if (subscriber) {
+        subscriber.on('message', (ch: string, message: string) => {
+          if (ch === channel) {
+            resolve(message);
+            nextPromise = new Promise(r => resolve = r);
+          }
+        });
+      }
 
       const setKeepAlive = () => {
         clearTimeout(keepAliveTimeout);
@@ -48,7 +56,7 @@ export default async function eventsRoutes(fastify: FastifyInstance) {
       };
 
       setKeepAlive();
-      yield { data: JSON.stringify({ type: 'CONNECTED' }) };
+      yield { data: JSON.stringify({ type: 'CONNECTED', userId }) };
 
       while (!isClosed) {
         const msg = await nextPromise;

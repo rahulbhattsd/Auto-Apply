@@ -1,80 +1,96 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '@autoapply/database';
-import { verifyToken } from '../middleware/auth';
+import { verifyToken } from '../middleware/auth.js';
+import { getWorkerHeartbeats } from '@autoapply/queue';
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
   fastify.addHook('preValidation', verifyToken);
 
-  fastify.get('/api/dashboard', async (request) => {
+  fastify.get('/api/dashboard', async (request, reply) => {
     const userId = request.user!.id;
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    const candidateId = profile?.id ?? -1;
 
-    const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    try {
+      const [
+        user,
+        recentConversations,
+        totalConversations,
+        totalMemories,
+        tasksSummary,
+        recentTasks,
+        workerHeartbeats,
+      ] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          include: { profile: true },
+        }),
+        prisma.conversation.findMany({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            title: true,
+            updatedAt: true,
+            _count: { select: { messages: true } },
+          },
+        }),
+        prisma.conversation.count({ where: { userId } }),
+        prisma.memory.count({ where: { userId } }),
+        prisma.task.groupBy({
+          by: ['status'],
+          where: { userId },
+          _count: { status: true },
+        }),
+        prisma.task.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        getWorkerHeartbeats(45000).catch(() => []),
+      ]);
 
-    const [
-      jobsDiscoveredToday,
-      jobsAnalyzed,
-      jobsMatched,
-      applicationsSubmitted,
-      applicationsPending,
-      humanActionsRequired,
-      failedApplications,
-      totalApplications,
-      statusDistributionRaw,
-    ] = await Promise.all([
-      prisma.job.count({ where: { createdAt: { gte: today } } }),
-      prisma.jobAnalysis.count(),
-      prisma.application.count({
-        where: {
-          candidateId,
-          status: { in: ['MATCHED', 'QUEUED', 'RESUME_GENERATING', 'READY_TO_APPLY', 'APPLYING', 'SUBMITTED', 'VERIFYING', 'VERIFIED', 'FAILED', 'RETRYING', 'NEEDS_HUMAN', 'CANCELLED'] }
-        }
-      }),
-      prisma.application.count({
-        where: { candidateId, status: { in: ['SUBMITTED', 'VERIFYING', 'VERIFIED'] } }
-      }),
-      prisma.application.count({
-        where: { candidateId, status: { in: ['QUEUED', 'RESUME_GENERATING', 'READY_TO_APPLY', 'APPLYING', 'RETRYING'] } }
-      }),
-      prisma.application.count({
-        where: { candidateId, status: 'NEEDS_HUMAN' }
-      }),
-      prisma.application.count({
-        where: { candidateId, status: 'FAILED' }
-      }),
-      prisma.application.count({
-        where: { candidateId }
-      }),
-      prisma.application.groupBy({
-        by: ['status'],
-        where: { candidateId },
-        _count: { status: true },
-      })
-    ]);
+      const taskCounts: Record<string, number> = {
+        QUEUED: 0,
+        RUNNING: 0,
+        COMPLETED: 0,
+        FAILED: 0,
+        CANCELLED: 0,
+      };
 
-    const successRate = totalApplications > 0
-        ? Math.round((applicationsSubmitted / totalApplications) * 100)
-        : 0;
+      for (const item of tasksSummary) {
+        taskCounts[item.status] = item._count.status;
+      }
 
-    const statusDistribution = statusDistributionRaw.map((item: (typeof statusDistributionRaw)[number]) => ({
-      name: item.status,
-      value: item._count.status
-    }));
+      const activeWorkersCount = workerHeartbeats.filter(w => w.status === 'HEALTHY' || w.status === 'BUSY').length;
 
-    return {
-      metrics: {
-        jobsDiscoveredToday,
-        jobsAnalyzed,
-        jobsMatched,
-        applicationsSubmitted,
-        applicationsPending,
-        humanActionsRequired,
-        failedApplications,
-        successRate,
-      },
-      charts: { statusDistribution }
-    };
+      return reply.send({
+        success: true,
+        user: {
+          name: user?.profile?.displayName || user?.email.split('@')[0] || 'User',
+          email: user?.email,
+          timezone: user?.profile?.timezone || 'UTC',
+        },
+        stats: {
+          totalConversations,
+          totalMemories,
+          tasks: taskCounts,
+          activeWorkers: activeWorkersCount,
+        },
+        recentConversations,
+        recentTasks,
+        workers: workerHeartbeats,
+        systemHealth: {
+          status: 'ok',
+          database: 'connected',
+          workersHealthy: activeWorkersCount > 0,
+        },
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch dashboard data' },
+      });
+    }
   });
 }
