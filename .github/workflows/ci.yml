@@ -35,21 +35,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-          - 9001:9001
-        options: >-
-          --command "server /data"
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
     - uses: actions/checkout@v4
 
@@ -69,16 +54,6 @@ jobs:
 
     - name: Setup test environment
       run: cp .env.test .env
-
-    - name: Setup Minio Test Bucket
-      run: |
-        docker run --network host --entrypoint /bin/sh minio/mc:latest -c "
-        /usr/bin/mc config host add myminio http://127.0.0.1:9000 minioadmin minioadmin;
-        /usr/bin/mc mb myminio/autoapply-resumes || true;
-        /usr/bin/mc mb myminio/agent-storage || true;
-        /usr/bin/mc anonymous set public myminio/autoapply-resumes || true;
-        /usr/bin/mc anonymous set public myminio/agent-storage || true;
-        "
 
     - name: Generate Prisma Client
       run: pnpm --filter @autoapply/database run generate
