@@ -119,8 +119,27 @@ export const worker = new Worker(
 
         case 'NOTIFICATION_TASK': {
           const title = (payload?.['title'] as string) || 'Background Notification';
+          const message = (payload?.['message'] as string) || 'Your background task has completed.';
+          const notifType = (payload?.['type'] as string) || 'TASK';
+          let notificationId: number | undefined;
+
+          if (userId) {
+            const created = await prisma.notification.create({
+              data: {
+                userId,
+                title,
+                message,
+                type: notifType,
+                ...(payload?.['metadata'] !== undefined ? { metadata: JSON.parse(JSON.stringify(payload['metadata'])) } : {}),
+                ...(typeof payload?.['relatedApplicationId'] === 'number' ? { relatedApplicationId: payload['relatedApplicationId'] } : {}),
+              },
+            });
+            notificationId = created.id;
+          }
+
           result = {
             delivered: true,
+            notificationId,
             title,
             timestamp: new Date().toISOString(),
           };

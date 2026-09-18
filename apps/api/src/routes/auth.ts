@@ -2,8 +2,12 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '@autoapply/database';
-import { env } from '@autoapply/config';
+import { env, allowedEmails } from '@autoapply/config';
+import { connection as redis } from '@autoapply/queue';
+
+const REVOKED_TOKEN_PREFIX = 'revoked:';
 
 const registerSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').optional(),
@@ -25,6 +29,37 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+/** Check whether an email is permitted by the allowlist. Empty list = unrestricted. */
+function isEmailAllowed(email: string): boolean {
+  if (allowedEmails.length === 0) return true;
+  return allowedEmails.includes(email.toLowerCase());
+}
+
+/** Revoke a JWT by storing its jti in Redis until the token would naturally expire. */
+async function revokeToken(token: string): Promise<void> {
+  try {
+    const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+    if (!decoded?.jti || !decoded?.exp) return;
+    const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+    if (ttl > 0) {
+      await redis.set(`${REVOKED_TOKEN_PREFIX}${decoded.jti}`, '1', 'EX', ttl);
+    }
+  } catch {
+    // Best-effort revocation — don't crash logout if Redis is flaky
+  }
+}
+
+/** Check if a token's jti has been revoked. */
+export async function isTokenRevoked(jti: string): Promise<boolean> {
+  try {
+    const result = await redis.get(`${REVOKED_TOKEN_PREFIX}${jti}`);
+    return result !== null;
+  } catch {
+    // If Redis is down, fail-open (token is not considered revoked)
+    return false;
+  }
+}
+
 export default async function authRoutes(fastify: FastifyInstance) {
   // GET /api/auth/me - restore session
   fastify.get('/me', async (request, reply) => {
@@ -34,7 +69,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number };
+      const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number; jti?: string };
+
+      // Check token revocation
+      if (decoded.jti && await isTokenRevoked(decoded.jti)) {
+        return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Session has been invalidated' } });
+      }
+
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: {
@@ -56,6 +97,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'User not found' } });
       }
 
+      // Re-check allowlist on every session restore
+      if (!isEmailAllowed(user.email)) {
+        reply.clearCookie('jwt', { path: '/' });
+        return reply.status(403).send({ success: false, error: { code: 'ACCESS_DENIED', message: 'This app is invite-only. Contact the owner for access.' } });
+      }
+
       return reply.send({
         id: user.id,
         email: user.email,
@@ -72,6 +119,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/register', async (request, reply) => {
     try {
       const data = registerSchema.parse(request.body);
+
+      // Allowlist check — before any DB writes
+      if (!isEmailAllowed(data.email)) {
+        return reply.status(403).send({
+          success: false,
+          error: { code: 'ACCESS_DENIED', message: 'This app is invite-only. Contact the owner for access.' },
+        });
+      }
 
       const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
       if (existingUser) {
@@ -99,7 +154,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         include: { profile: true },
       });
 
-      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
+      const jti = crypto.randomUUID();
+      const token = jwt.sign({ userId: user.id, jti }, env.JWT_SECRET, { expiresIn: '7d' });
 
       reply.setCookie('jwt', token, {
         path: '/',
@@ -148,6 +204,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const data = loginSchema.parse(request.body);
 
+      // Allowlist check — before credential verification
+      if (!isEmailAllowed(data.email)) {
+        return reply.status(403).send({
+          success: false,
+          error: { code: 'ACCESS_DENIED', message: 'This app is invite-only. Contact the owner for access.' },
+        });
+      }
+
       const user = await prisma.user.findUnique({
         where: { email: data.email },
         include: { profile: true },
@@ -168,7 +232,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
+      const jti = crypto.randomUUID();
+      const token = jwt.sign({ userId: user.id, jti }, env.JWT_SECRET, { expiresIn: '7d' });
 
       reply.setCookie('jwt', token, {
         path: '/',
@@ -213,9 +278,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // POST /api/auth/logout
   fastify.post('/logout', async (request, reply) => {
-    reply.clearCookie('jwt', { path: '/' });
     const token = request.cookies['jwt'];
+    reply.clearCookie('jwt', { path: '/' });
+
     if (token) {
+      // Revoke the token server-side so it can't be replayed
+      await revokeToken(token);
+
       try {
         const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number };
         await prisma.auditLog.create({

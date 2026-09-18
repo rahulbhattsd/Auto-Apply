@@ -48,8 +48,10 @@ export function useAuth() {
     isLoading,
     login: loginMutation.mutate,
     loginError: loginMutation.error,
+    isLoginPending: loginMutation.isPending,
     register: registerMutation.mutate,
     registerError: registerMutation.error,
+    isRegisterPending: registerMutation.isPending,
     logout: logoutMutation.mutate,
   };
 }

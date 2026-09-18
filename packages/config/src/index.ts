@@ -31,15 +31,13 @@ const envSchema = z.object({
   WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().default(15000),
   WORKER_HEARTBEAT_TIMEOUT_MS: z.coerce.number().default(45000),
 
+  // Access Control
+  ALLOWED_EMAILS: z.string().optional(),
+
   // Alerting
   ALERT_WEBHOOK_URL: z.string().url().optional(),
 
   // Optional External Services
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().optional(),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
@@ -84,3 +82,9 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
+
+/** Parsed email allowlist — empty array means unrestricted access. */
+export const allowedEmails: string[] = (env.ALLOWED_EMAILS ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);

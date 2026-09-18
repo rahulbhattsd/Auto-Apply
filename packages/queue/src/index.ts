@@ -4,11 +4,23 @@ import { env } from '@autoapply/config';
 
 export const connection = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  retryStrategy(times) {
+    // Limit reconnection spam when Redis is down
+    const delay = Math.min(times * 500, 5000);
+    return delay;
+  },
+});
+
+connection.on('error', (err) => {
+  // Prevent unhandled error event crash when Redis is offline
+  if (process.env['NODE_ENV'] !== 'test') {
+    console.warn(`[Redis Connection Warning]: ${err.message}`);
+  }
 });
 
 export const QUEUE_NAMES = {
   AGENT_TASKS: 'agent-tasks',
-  NOTIFICATIONS: 'notifications',
   // Backward compatibility stubs
   JOB_DISCOVERY: 'job-discovery',
   JOB_ANALYSIS: 'job-analysis',
@@ -54,6 +66,12 @@ export const DEFAULT_JOB_OPTIONS = {
 export const agentTaskQueue = new Queue(QUEUE_NAMES.AGENT_TASKS, {
   connection,
   defaultJobOptions: DEFAULT_JOB_OPTIONS,
+});
+
+agentTaskQueue.on('error', (err) => {
+  if (process.env['NODE_ENV'] !== 'test') {
+    console.warn(`[agentTaskQueue Warning]: ${err.message}`);
+  }
 });
 
 export const RETRY_POLICIES = {

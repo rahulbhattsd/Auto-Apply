@@ -20,6 +20,7 @@ import metricsRoutes from './routes/metrics.js';
 import eventsRoutes from './routes/events.js';
 import jobRoutes from './routes/jobs.js';
 import applicationsRoutes from './routes/applications.js';
+import notificationRoutes from './routes/notifications.js';
 
 export const buildApp = () => {
   const normalizeOrigin = (raw: string): string => {
@@ -87,9 +88,9 @@ export const buildApp = () => {
   fastify.register(multipart);
   fastify.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 
-  // Rate-limited Auth routes
+  // Rate-limited Auth routes (strict: 5 attempts/min for brute-force prevention)
   fastify.register(async (app) => {
-    app.register(rateLimit, { max: 15, timeWindow: '1 minute' });
+    app.register(rateLimit, { max: 5, timeWindow: '1 minute' });
     app.register(authRoutes);
   }, { prefix: '/api/auth' });
 
@@ -101,6 +102,7 @@ export const buildApp = () => {
   fastify.register(jobRoutes, { prefix: '/api/jobs' });
   fastify.register(applicationsRoutes, { prefix: '/api/applications' });
   fastify.register(systemRoutes, { prefix: '/api/system' });
+  fastify.register(notificationRoutes, { prefix: '/api/notifications' });
   fastify.register(dashboardRoutes);
   fastify.register(metricsRoutes);
   fastify.register(eventsRoutes);
