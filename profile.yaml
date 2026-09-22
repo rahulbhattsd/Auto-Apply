@@ -1,0 +1,47 @@
+# AutoApply Agent — profile.yaml
+# Personal data used to fill application forms.
+
+personal:
+  full_name: ""
+  first_name: ""
+  last_name: ""
+  email: ""
+  phone: ""
+  location:
+    city: ""
+    state: ""
+    country: ""
+    pincode: ""
+
+links:
+  linkedin: ""
+  github: ""
+  portfolio: ""
+
+education:
+  degree: ""
+  branch: ""
+  institute: ""
+  university: ""
+  batch: ""
+  cgpa: ""
+
+job_search:
+  target_roles:
+    - "AI Engineer"
+    - "AI Agent Developer"
+  target_locations:
+    - "Remote"
+  min_experience_years: 0
+  willing_to_relocate: true
+  notice_period_days: 0
+
+eligibility:
+  work_authorization: ""
+  require_visa_sponsorship: false
+  disability_status: "Prefer not to say"
+  gender: ""
+  veteran_status: "Not applicable"
+
+resume_file: "resume_base.json"
+cover_letter_template: ""

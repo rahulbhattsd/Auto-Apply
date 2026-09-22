@@ -1,0 +1,37 @@
+{
+  "summary": "",
+  "skills": {
+    "languages": [],
+    "frameworks": [],
+    "tools": [],
+    "other": []
+  },
+  "experience": [
+    {
+      "company": "",
+      "role": "",
+      "start_date": "",
+      "end_date": "",
+      "bullets": []
+    }
+  ],
+  "education": [
+    {
+      "institute": "",
+      "degree": "",
+      "field": "",
+      "start_date": "",
+      "end_date": "",
+      "cgpa": ""
+    }
+  ],
+  "projects": [
+    {
+      "name": "",
+      "description": "",
+      "tech_stack": [],
+      "link": "",
+      "bullets": []
+    }
+  ]
+}
