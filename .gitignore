@@ -19,3 +19,18 @@ logs/*.log
 .DS_Store
 .vscode/
 .idea/
+
+# Project-specific ignores (added by bug fix)
+config.yaml
+.env
+data.db
+data.db-journal
+data.db-wal
+data.db-shm
+test_data.db
+profiles/resumes/*
+!profiles/resumes/.gitkeep
+profiles/screenshots/*
+!profiles/screenshots/.gitkeep
+logs/*.log
+!logs/.gitkeep

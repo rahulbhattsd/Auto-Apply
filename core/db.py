@@ -93,6 +93,12 @@ def get_jobs(limit: int = 50, status: str | None = None, db_path: str = DB_PATH)
 def update_job_status(job_id: int, status: str, stuck_reason: str = None,
                        resume_path: str = None, screenshot_path: str = None,
                        db_path: str = DB_PATH) -> None:
+    with closing(get_connection(db_path)) as conn:
+        old = conn.execute(
+            "SELECT status FROM jobs WHERE id = ?", (job_id,)
+        ).fetchone()
+    old_status = old["status"] if old else None
+
     fields, params = ["status = ?"], [status]
 
     if stuck_reason is not None:
@@ -113,8 +119,12 @@ def update_job_status(job_id: int, status: str, stuck_reason: str = None,
         with conn:
             conn.execute(f"UPDATE jobs SET {', '.join(fields)} WHERE id = ?", params)
 
-    if status in ("applied", "stuck", "failed"):
-        bump_stat(date.today().isoformat(), status, db_path=db_path)
+    if status in ("applied", "stuck", "failed") and status != old_status:
+        day = date.today().isoformat()
+        # If we're transitioning away from a counted status, decrement it
+        if old_status in ("applied", "stuck", "failed"):
+            decrement_stat(day, old_status, db_path=db_path)
+        bump_stat(day, status, db_path=db_path)
 
 
 def get_cached_response(prompt_hash: str, db_path: str = DB_PATH) -> str | None:
@@ -142,6 +152,18 @@ def bump_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
         with conn:
             conn.execute("INSERT OR IGNORE INTO stats (date) VALUES (?)", (day,))
             conn.execute(f"UPDATE stats SET {field} = {field} + 1 WHERE date = ?", (day,))
+
+
+def decrement_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
+    if field not in ("applied", "stuck", "failed"):
+        return
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.execute("INSERT OR IGNORE INTO stats (date) VALUES (?)", (day,))
+            conn.execute(
+                f"UPDATE stats SET {field} = MAX(0, {field} - 1) WHERE date = ?",
+                (day,),
+            )
 
 
 def get_today_stats(db_path: str = DB_PATH) -> dict:
