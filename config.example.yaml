@@ -1,0 +1,26 @@
+groq:
+  keys:
+    - "gsk_key_1_here"
+    - "gsk_key_2_here"
+    - "gsk_key_3_here"
+    - "gsk_key_4_here"
+    - "gsk_key_5_here"
+    - "gsk_key_6_here"
+    - "gsk_key_7_here"
+  cooldown_seconds: 60
+
+telegram:
+  token: "123456:ABC-DEF_your_bot_token_here"
+  chat_id: "123456789"
+
+gmail:
+  user: "you@gmail.com"
+  app_password: "xxxx xxxx xxxx xxxx"
+  imap_host: "imap.gmail.com"
+
+settings:
+  target_jobs_per_day: 50
+  min_delay_sec: 120
+  max_delay_sec: 300
+  headless: true
+  apply_concurrency: 1

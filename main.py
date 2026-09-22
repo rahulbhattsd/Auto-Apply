@@ -137,7 +137,7 @@ async def run_one_job(job: dict, pool, config: dict, profile: dict, resume_json:
         json.dump(tailored, f, indent=2)
 
     # --- detect ATS ---
-    ats_type = detect_ats_by_url(url) or llm.classify_ats(url, pool)
+    ats_type = detect_ats_by_url(url) or "generic"
 
     settings = config.get("settings", {})
     headless = settings.get("headless", True)
@@ -166,7 +166,12 @@ async def run_one_job(job: dict, pool, config: dict, profile: dict, resume_json:
 
                 for _ in range(90):  # poll up to 15 min (90 * 10s)
                     if human_handoff.should_resume(job_id):
-                        result = await handler.apply()  # one retry
+                        try:
+                            await page.goto(url, timeout=60000)
+                            await asyncio.sleep(2)
+                        except Exception as e:
+                            logger.warning(f"Reload before retry failed: {e}")
+                        result = await handler.apply()
                         break
                     if human_handoff.should_skip(job_id):
                         result = {"status": "skipped", "reason": "user skipped"}
@@ -237,8 +242,8 @@ async def main() -> None:
             await run_one_job(job, pool, config, profile, resume_json)
             await asyncio.sleep(random.uniform(min_delay, max_delay))
 
-    except KeyboardInterrupt:
-        logger.warning("KeyboardInterrupt received — shutting down.")
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        logger.warning("Shutdown requested — stopping loop.")
 
     finally:
         stats = db.get_today_stats()
@@ -248,4 +253,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBye.")

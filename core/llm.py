@@ -15,6 +15,10 @@ import time
 from groq import Groq, RateLimitError
 from loguru import logger
 
+class AllKeysCoolingError(RuntimeError):
+    """Raised when every Groq key is in cooldown."""
+
+
 FAST_MODEL = "llama-3.1-8b-instant"
 SMART_MODEL = "llama-3.3-70b-versatile"
 
@@ -40,9 +44,7 @@ class GroqKeyPool:
                 return client
         soonest = min(self._cooling_until.values())
         wait = max(0.0, soonest - now)
-        logger.warning(f"All Groq keys cooling down — waiting {wait:.0f}s")
-        time.sleep(wait)
-        return next(self._cycle)
+        raise AllKeysCoolingError(f"All Groq keys cooling for {wait:.0f}s")
 
     def mark_rate_limited(self, client: Groq) -> None:
         self._cooling_until[id(client)] = time.monotonic() + self._cooldown_seconds
@@ -50,9 +52,16 @@ class GroqKeyPool:
     def chat(self, model: str, messages: list[dict], **kwargs) -> str:
         last_err = None
         for _ in range(len(self._clients) * 2):
-            client = self.get_client()
             try:
-                resp = client.chat.completions.create(model=model, messages=messages, **kwargs)
+                client = self.get_client()
+            except AllKeysCoolingError as e:
+                logger.warning(str(e))
+                time.sleep(60)
+                continue
+            try:
+                resp = client.chat.completions.create(
+                    model=model, messages=messages, **kwargs
+                )
                 return resp.choices[0].message.content
             except RateLimitError as e:
                 last_err = e
@@ -61,11 +70,11 @@ class GroqKeyPool:
 
 
 def _extract_json(text: str) -> dict:
+    import re
     text = text.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        if text.lower().startswith("json"):
-            text = text[4:]
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
+    if fence:
+        text = fence.group(1).strip()
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end != -1:
         text = text[start:end + 1]
