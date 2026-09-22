@@ -1,12 +1,12 @@
 """
 core/db.py — SQLite schema + helper functions.
 
-Tables: jobs, llm_cache, stats  (see project spec for full column list).
-Single file: data.db (not committed — see .gitignore).
+Tables: jobs, llm_cache, stats. Single file: data.db (not committed).
 """
 
 import sqlite3
-from pathlib import Path
+from contextlib import closing
+from datetime import date
 
 DB_PATH = "data.db"
 
@@ -43,45 +43,111 @@ CREATE TABLE IF NOT EXISTS stats (
 
 
 def get_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
-    """Open a connection with row_factory set to sqlite3.Row."""
-    pass
+    conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    return conn
 
 
 def init_db(db_path: str = DB_PATH) -> None:
-    """Create tables if they don't exist (runs SCHEMA)."""
-    pass
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.executescript(SCHEMA)
 
 
-def insert_job(job: dict) -> int | None:
-    """Insert a scraped job as 'queued'. Returns new id, or None if jd_hash duplicate."""
-    pass
+def insert_job(company: str, role: str, url: str, jd_text: str, jd_hash: str,
+               db_path: str = DB_PATH) -> int | None:
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            cur = conn.execute(
+                """INSERT OR IGNORE INTO jobs (company, role, url, jd_text, jd_hash)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (company, role, url, jd_text, jd_hash),
+            )
+            return cur.lastrowid if cur.rowcount else None
 
 
-def update_job_status(job_id: int, status: str, **fields) -> None:
-    """Update status (+ optional stuck_reason/resume_path/screenshot_path/applied_at)."""
-    pass
+def get_queued_jobs(limit: int = 50, db_path: str = DB_PATH) -> list[dict]:
+    with closing(get_connection(db_path)) as conn:
+        rows = conn.execute(
+            "SELECT * FROM jobs WHERE status = 'queued' ORDER BY created_at ASC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
-def get_jobs(limit: int = 50, status: str | None = None) -> list[dict]:
-    """Fetch jobs, optionally filtered by status, most recent first."""
-    pass
+def get_jobs(limit: int = 50, status: str | None = None, db_path: str = DB_PATH) -> list[dict]:
+    with closing(get_connection(db_path)) as conn:
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
 
 
-def get_cached_response(prompt_hash: str) -> str | None:
-    """Look up a cached LLM response by prompt hash."""
-    pass
+def update_job_status(job_id: int, status: str, stuck_reason: str = None,
+                       resume_path: str = None, screenshot_path: str = None,
+                       db_path: str = DB_PATH) -> None:
+    fields, params = ["status = ?"], [status]
+
+    if stuck_reason is not None:
+        fields.append("stuck_reason = ?")
+        params.append(stuck_reason)
+    if resume_path is not None:
+        fields.append("resume_path = ?")
+        params.append(resume_path)
+    if screenshot_path is not None:
+        fields.append("screenshot_path = ?")
+        params.append(screenshot_path)
+    if status == "applied":
+        fields.append("applied_at = CURRENT_TIMESTAMP")
+
+    params.append(job_id)
+
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.execute(f"UPDATE jobs SET {', '.join(fields)} WHERE id = ?", params)
+
+    if status in ("applied", "stuck", "failed"):
+        bump_stat(date.today().isoformat(), status, db_path=db_path)
 
 
-def set_cached_response(prompt_hash: str, response: str) -> None:
-    """Store an LLM response for reuse."""
-    pass
+def get_cached_response(prompt_hash: str, db_path: str = DB_PATH) -> str | None:
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute(
+            "SELECT response FROM llm_cache WHERE prompt_hash = ?", (prompt_hash,)
+        ).fetchone()
+        return row["response"] if row else None
 
 
-def bump_stat(date: str, field: str) -> None:
-    """Increment stats.applied / stats.stuck / stats.failed for a given date."""
-    pass
+def set_cached_response(prompt_hash: str, response: str, db_path: str = DB_PATH) -> None:
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """INSERT INTO llm_cache (prompt_hash, response) VALUES (?, ?)
+                   ON CONFLICT(prompt_hash) DO UPDATE SET response = excluded.response""",
+                (prompt_hash, response),
+            )
 
 
-def get_today_stats(date: str) -> dict:
-    """Return today's applied/stuck/failed counts."""
-    pass
+def bump_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
+    if field not in ("applied", "stuck", "failed"):
+        return
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.execute("INSERT OR IGNORE INTO stats (date) VALUES (?)", (day,))
+            conn.execute(f"UPDATE stats SET {field} = {field} + 1 WHERE date = ?", (day,))
+
+
+def get_today_stats(db_path: str = DB_PATH) -> dict:
+    day = date.today().isoformat()
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute(
+            "SELECT applied, stuck, failed FROM stats WHERE date = ?", (day,)
+        ).fetchone()
+        return dict(row) if row else {"applied": 0, "stuck": 0, "failed": 0}

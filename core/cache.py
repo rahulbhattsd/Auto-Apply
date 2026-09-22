@@ -1,24 +1,22 @@
 """
-core/cache.py — LLM response cache (prompt_hash -> response), backed by
-the llm_cache table in SQLite (see core.db).
+core/cache.py — LLM response cache, backed by core.db's llm_cache table.
 
-Thin wrapper so core.llm doesn't need to know about SQLite directly.
+Usage: hash the prompt yourself via hash_prompt(), then get()/set() using
+that hash as the key (see main.py's run_one_job).
 """
 
 import hashlib
 
-# TODO: from core import db
+from core import db
 
 
 def hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
 
-def get(prompt: str) -> str | None:
-    """Return cached response for this exact prompt, if any."""
-    pass
+def get(prompt_hash: str) -> str | None:
+    return db.get_cached_response(prompt_hash)
 
 
-def set(prompt: str, response: str) -> None:
-    """Store a response for this prompt's hash."""
-    pass
+def set(prompt_hash: str, response: str) -> None:
+    db.set_cached_response(prompt_hash, response)
