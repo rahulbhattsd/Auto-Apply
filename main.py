@@ -24,7 +24,8 @@ from pathlib import Path
 import yaml
 from loguru import logger
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth  # ✅
+# use: await Stealth().apply_stealth_async(page)
 
 from core import db, llm, scraper, notifier, cache
 from ats import greenhouse, lever, linkedin, workday, generic
