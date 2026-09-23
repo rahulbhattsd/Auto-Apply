@@ -24,4 +24,8 @@ class LeverHandler(ATSHandler):
             except Exception:
                 return {"status": "stuck", "reason": "no submission confirmation detected"}
         except Exception as e:
+<<<<<<< HEAD
             return {"status": "failed", "reason": str(e)}
+=======
+            return {"status": "failed", "reason": str(e)}
+>>>>>>> 8e5661ab6b8d4149b93952f3214627862d856a9b
