@@ -70,3 +70,28 @@ async def map_fields_batch(fields: list[dict], profile: dict, pool: GroqPool) ->
         mapping = {}
     set_cached(key, mapping)
     return mapping
+
+async def tailor_resume(base_resume: dict, jd_text: str, job_title: str, pool: "GroqPool") -> dict:
+    if not jd_text:
+        return {}
+    key = hashlib.sha256((jd_text + job_title).encode()).hexdigest()
+    cached = get_cached(key)
+    if cached is not None:
+        return cached
+
+    prompt = (
+        "You tailor resumes to job descriptions. Given the base resume and a job "
+        "description, return ONLY valid JSON (no markdown) with exactly these keys: "
+        "summary (str), skills (list[str]), highlighted_projects (list[str]) — "
+        "reordered/rewritten to best match the JD.\n\n"
+        f"Job title: {job_title}\n\nJob description:\n{jd_text}\n\n"
+        f"Base resume:\n{json.dumps(base_resume, indent=2)}"
+    )
+    text = await pool.chat([{"role": "user", "content": prompt}])
+    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        patch = json.loads(text)
+    except Exception:
+        patch = {}
+    set_cached(key, patch)
+    return patch

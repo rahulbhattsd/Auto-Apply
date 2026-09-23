@@ -1,33 +1,120 @@
-<!--
-  dashboard_ui/index.html — AutoApply single-page dashboard.
-  Tailwind (CDN) + Alpine.js (CDN). No build step, no Node.
-
-  TODO:
-    - Alpine component polling GET /api/jobs and /api/stats every 10s
-    - Table columns: # | Company | Role | Status | Time | Action
-    - Status color coding: applied=green, stuck=yellow, failed=red, queued=gray
-    - "Resume ▶" button on stuck rows -> POST /api/resume/{id}
-    - "Skip" button on stuck rows -> POST /api/skip/{id}
-    - Small stats header: applied / stuck / failed today
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AutoApply Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AutoApply Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-900">
-  <!-- TODO: x-data="dashboard()" root, x-init to start polling -->
-  <div class="p-8">
-    <h1 class="text-2xl font-bold mb-4">AutoApply Dashboard</h1>
-    <!-- TODO: stats summary -->
-    <!-- TODO: jobs table -->
+<body class="bg-gray-950 text-gray-100 min-h-screen" x-data="dashboard()" x-init="init()">
+<div class="max-w-6xl mx-auto p-4 sm:p-8">
+  <h1 class="text-2xl font-bold mb-6">AutoApply Dashboard</h1>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      <div class="text-gray-400 text-sm">Applied</div>
+      <div class="text-2xl font-bold text-green-400" x-text="stats.applied ?? 0"></div>
+    </div>
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      <div class="text-gray-400 text-sm">Stuck</div>
+      <div class="text-2xl font-bold text-amber-400" x-text="stats.stuck ?? 0"></div>
+    </div>
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      <div class="text-gray-400 text-sm">Failed</div>
+      <div class="text-2xl font-bold text-red-400" x-text="stats.failed ?? 0"></div>
+    </div>
+    <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      <div class="text-gray-400 text-sm">Total</div>
+      <div class="text-2xl font-bold" x-text="jobs.length"></div>
+    </div>
   </div>
 
-  <script>
-    // TODO: Alpine.data('dashboard', () => ({ jobs: [], stats: {}, ... }))
-  </script>
+  <div class="overflow-x-auto rounded-xl border border-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-900 text-gray-400">
+        <tr>
+          <th class="p-3 text-left">ID</th>
+          <th class="p-3 text-left">Company</th>
+          <th class="p-3 text-left">Role</th>
+          <th class="p-3 text-left">Status</th>
+          <th class="p-3 text-left">Applied At</th>
+          <th class="p-3 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="job in jobs" :key="job.id">
+          <tr class="border-t border-gray-800 hover:bg-gray-900/50">
+            <td class="p-3" x-text="job.id"></td>
+            <td class="p-3" x-text="job.company"></td>
+            <td class="p-3" x-text="job.role"></td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded-full text-xs font-medium"
+                :class="badgeClass(job.status)" x-text="job.status"></span>
+            </td>
+            <td class="p-3 text-gray-400" x-text="job.applied_at || '—'"></td>
+            <td class="p-3 space-x-2">
+              <template x-if="showActions(job.status)">
+                <span>
+                  <button @click="act(job.id, 'resume')"
+                    class="px-2 py-1 rounded bg-green-700 hover:bg-green-600 text-xs">Resume</button>
+                  <button @click="act(job.id, 'skip')"
+                    class="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">Skip</button>
+                </span>
+              </template>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function dashboard() {
+  return {
+    jobs: [],
+    stats: {},
+    async init() {
+      await this.refresh();
+      setInterval(() => this.refresh(), 10000);
+    },
+    async refresh() {
+      try {
+        const [jobsRes, statsRes] = await Promise.all([
+          fetch('/api/jobs?limit=50'),
+          fetch('/api/stats'),
+        ]);
+        this.jobs = await jobsRes.json();
+        this.stats = await statsRes.json();
+      } catch (e) {
+        console.error('refresh failed', e);
+      }
+    },
+    async act(id, action) {
+      try {
+        await fetch(`/api/${action}/${id}`, { method: 'POST' });
+        await this.refresh();
+      } catch (e) {
+        console.error('action failed', e);
+      }
+    },
+    showActions(status) {
+      return ['stuck', 'resume_requested', 'skip_requested'].includes(status);
+    },
+    badgeClass(status) {
+      return {
+        applied: 'bg-green-500/20 text-green-400',
+        stuck: 'bg-amber-500/20 text-amber-400',
+        failed: 'bg-red-500/20 text-red-400',
+        queued: 'bg-blue-500/20 text-blue-400',
+        skipped: 'bg-gray-500/20 text-gray-400',
+        resume_requested: 'bg-purple-500/20 text-purple-400',
+        skip_requested: 'bg-purple-500/20 text-purple-400',
+      }[status] || 'bg-gray-500/20 text-gray-400';
+    },
+  };
+}
+</script>
 </body>
 </html>
