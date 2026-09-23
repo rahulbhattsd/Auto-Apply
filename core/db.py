@@ -55,6 +55,12 @@ def init_db(db_path: str = DB_PATH) -> None:
             conn.executescript(SCHEMA)
 
 
+def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute("SELECT id FROM jobs WHERE jd_hash = ?", (jd_hash,)).fetchone()
+        return row["id"] if row else None
+
+
 def insert_job(company: str, role: str, url: str, jd_text: str, jd_hash: str,
                db_path: str = DB_PATH) -> int | None:
     with closing(get_connection(db_path)) as conn:
@@ -143,11 +149,22 @@ def set_cached_response(prompt_hash: str, response: str, db_path: str = DB_PATH)
                    ON CONFLICT(prompt_hash) DO UPDATE SET response = excluded.response""",
                 (prompt_hash, response),
             )
+
+
+def get_llm_cache(prompt_hash: str, db_path: str = DB_PATH) -> str | None:
+    return get_cached_response(prompt_hash, db_path=db_path)
+
+
+def set_llm_cache(prompt_hash: str, response: str, db_path: str = DB_PATH) -> None:
+    set_cached_response(prompt_hash, response, db_path=db_path)
+
+
 def get_job(job_id: int, db_path: str = DB_PATH) -> dict | None:
     with closing(get_connection(db_path)) as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return dict(row) if row else None
-    
+
+
 def bump_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
     if field not in ("applied", "stuck", "failed"):
         return
