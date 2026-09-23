@@ -1,22 +1,24 @@
-"""
-core/cache.py — LLM response cache, backed by core.db's llm_cache table.
+"""core/cache.py — SQLite-backed cache for LLM responses."""
 
-Usage: hash the prompt yourself via hash_prompt(), then get()/set() using
-that hash as the key (see main.py's run_one_job).
-"""
+import sqlite3
+import json
+from pathlib import Path
 
-import hashlib
+DB_PATH = Path("cache.db")
 
-from core import db
+def _init():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS llm_cache (key TEXT PRIMARY KEY, value TEXT)")
 
+def get_cached(key: str) -> dict | None:
+    _init()
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute("SELECT value FROM llm_cache WHERE key = ?", (key,)).fetchone()
+        return json.loads(row[0]) if row else None
 
-def hash_prompt(prompt: str) -> str:
-    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
-
-
-def get(prompt_hash: str) -> str | None:
-    return db.get_cached_response(prompt_hash)
-
-
-def set(prompt_hash: str, response: str) -> None:
-    db.set_cached_response(prompt_hash, response)
+def set_cached(key: str, value: dict) -> None:
+    _init()
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("INSERT OR REPLACE INTO llm_cache (key, value) VALUES (?, ?)",
+                     (key, json.dumps(value)))
+        conn.commit()

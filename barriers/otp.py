@@ -14,8 +14,9 @@ def extract_code(body: str) -> str | None:
 
 def wait_for_otp(gmail_user: str, app_password: str, timeout_sec: int = 90) -> str | None:
     deadline = time.monotonic() + timeout_sec
-    conn = connect(gmail_user, app_password)
+    conn = None
     try:
+        conn = connect(gmail_user, app_password)
         while time.monotonic() < deadline:
             _, data = conn.search(None, "UNSEEN")
             for num in reversed(data[0].split()):
@@ -35,4 +36,5 @@ def wait_for_otp(gmail_user: str, app_password: str, timeout_sec: int = 90) -> s
             time.sleep(5)
         return None
     finally:
-        conn.logout()
+        if conn:
+            conn.logout()

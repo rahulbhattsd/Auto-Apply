@@ -6,8 +6,12 @@ from core.llm import map_fields_batch
 
 def _get(obj: dict, path: str) -> str:
     for key in path.split("."):
-        obj = obj.get(key, {}) if isinstance(obj, dict) else None
-    return obj if isinstance(obj, str) else ""
+        if not isinstance(obj, dict):
+            return ""
+        obj = obj.get(key)
+        if obj is None:
+            return ""
+    return str(obj) if obj is not None else ""
 
 LABEL_MAP = {
     "first name": "personal.first_name", "last name": "personal.last_name",
@@ -16,7 +20,6 @@ LABEL_MAP = {
     "linkedin": "links.linkedin", "github": "links.github",
     "portfolio": "links.portfolio", "website": "links.portfolio",
 }
-
 
 class ATSHandler(ABC):
     SUBMIT_SELECTOR = "button[type=submit]"
@@ -64,7 +67,7 @@ class ATSHandler(ABC):
             "input:not([type=hidden]):not([type=file]):not([type=submit]), textarea"
         ):
             try:
-                if await el.input_value():
+                if await el.evaluate("el => el.value"):
                     continue
             except Exception:
                 pass
@@ -75,7 +78,7 @@ class ATSHandler(ABC):
                 unmapped.append({"name": label})
         if not unmapped:
             return
-        mapping = map_fields_batch(unmapped, self.profile, self.pool)
+        mapping = await map_fields_batch(unmapped, self.profile, self.pool)
         for el, field in zip(els, unmapped):
             value = mapping.get(field["name"])
             if value:
