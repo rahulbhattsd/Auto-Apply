@@ -1,5 +1,6 @@
 """core/notifier.py — Outbound Telegram messages sent BY the agent."""
 
+import asyncio
 import yaml
 from telegram import Bot
 
