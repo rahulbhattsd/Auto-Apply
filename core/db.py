@@ -193,3 +193,12 @@ def get_today_stats(db_path: str = DB_PATH) -> dict:
             "SELECT applied, stuck, failed FROM stats WHERE date = ?", (day,)
         ).fetchone()
         return dict(row) if row else {"applied": 0, "stuck": 0, "failed": 0}
+
+
+def get_blocked_jobs(db_path: str = DB_PATH) -> list[dict]:
+    from contextlib import closing
+    with closing(get_connection(db_path)) as conn:
+        rows = conn.execute(
+            "SELECT * FROM jobs WHERE status = 'blocked' ORDER BY id DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
