@@ -1,35 +1,45 @@
-"""
-core/notifier.py — Outbound Telegram messages sent BY the agent.
+"""core/notifier.py — Outbound Telegram messages sent BY the agent."""
 
-(Inbound command handling lives in bot.py, not here.)
+import yaml
+from telegram import Bot
 
-Message types:
-  - Agent started:      "🚀 Agent started. Target: 50 jobs"
-  - Job stuck:           "🚧 Job #23 stuck: Phone OTP | Company: X" + screenshot
-  - Job applied:          "✅ Job #23 applied: Google SDE"
-  - Daily summary:        "📊 Daily: 43 applied, 5 stuck, 2 failed"
-"""
-
-# TODO: from telegram import Bot
+_bot, _chat_id = None, None
 
 
-def get_bot(token: str):
-    """Build a telegram.Bot instance from config."""
-    pass
+def get_bot(token: str) -> Bot:
+    return Bot(token=token)
+
+
+def _load() -> tuple[Bot, str]:
+    global _bot, _chat_id
+    if _bot is None:
+        with open("config.yaml") as f:
+            cfg = yaml.safe_load(f)
+        _bot = get_bot(cfg["telegram"]["token"])
+        _chat_id = cfg["telegram"]["chat_id"]
+    return _bot, _chat_id
 
 
 async def notify_agent_started(target_jobs: int) -> None:
-    pass
+    bot, chat_id = _load()
+    await bot.send_message(chat_id=chat_id, text=f"🚀 Agent started. Target: {target_jobs} jobs")
 
 
 async def notify_job_applied(job_id: int, company: str, role: str) -> None:
-    pass
+    bot, chat_id = _load()
+    await bot.send_message(chat_id=chat_id, text=f"✅ Job #{job_id} applied: {company} — {role}")
 
 
 async def notify_job_stuck(job_id: int, company: str, reason: str, screenshot_path: str) -> None:
-    """Send stuck notice with the screenshot attached."""
-    pass
+    bot, chat_id = _load()
+    caption = f"🚧 Job #{job_id} stuck: {reason} | Company: {company}"
+    try:
+        with open(screenshot_path, "rb") as f:
+            await bot.send_photo(chat_id=chat_id, photo=f, caption=caption)
+    except FileNotFoundError:
+        await bot.send_message(chat_id=chat_id, text=caption)
 
 
 async def notify_daily_summary(applied: int, stuck: int, failed: int) -> None:
-    pass
+    bot, chat_id = _load()
+    await bot.send_message(chat_id=chat_id, text=f"📊 Daily: {applied} applied, {stuck} stuck, {failed} failed")
