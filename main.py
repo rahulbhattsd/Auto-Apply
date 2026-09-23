@@ -7,6 +7,7 @@ Entry point. Run with: python main.py
 import asyncio
 import hashlib
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -121,15 +122,19 @@ def pick_handler(ats_type: str, page, job, profile, resume, pool=None):
 # Single-job runner
 # ---------------------------------------------------------------------------
 
-async def run_one_job(job: dict, profile: dict, resume: dict, pool) -> dict:
+async def run_one_job(job: dict, profile: dict, resume: dict, pool, screenshot_path: str | None = None) -> dict:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
+        from playwright_stealth import stealth_async
+        await stealth_async(page)
         try:
             await page.goto(job["url"], timeout=30000)
             ats_type = detect_ats_by_url(job["url"])
             handler = pick_handler(ats_type, page, job, profile, resume, pool=pool)
             result = await handler.apply()
+            if result.get("status") == "stuck" and screenshot_path:
+                await page.screenshot(path=screenshot_path, full_page=True)
             return result
         finally:
             await browser.close()
@@ -155,6 +160,10 @@ async def main():
 
     applied = stuck = failed = 0
     for job in jobs:
+        delay = random.randint(120, 300)  # 2–5 minutes
+        print(f"[i] Sleeping {delay}s before next application...")
+        await asyncio.sleep(delay)
+
         # Pause check between jobs
         if Path("PAUSE_FLAG").exists():
             print("Paused. Waiting for /start_agent...")
@@ -183,8 +192,11 @@ async def main():
         # Pick the right resume PDF for this job title
         resume["resume_path"] = pick_resume(job["role"])
 
+        Path("logs").mkdir(exist_ok=True)
+        screenshot = f"logs/stuck_{job_id}.png"
+
         try:
-            result = await run_one_job(job, profile, resume, pool)
+            result = await run_one_job(job, profile, resume, pool, screenshot_path=screenshot)
         except Exception as e:
             print(f"[!] Job #{job_id} crashed: {e}")
             failed += 1
@@ -200,8 +212,6 @@ async def main():
 
         elif status == "stuck":
             stuck += 1
-            screenshot = f"logs/stuck_{job_id}.png"
-            Path("logs").mkdir(exist_ok=True)
             await pause_for_human(
                 job_id, result.get("reason", "unknown"), screenshot
             )

@@ -14,13 +14,14 @@ def clean_jd_text(raw_html: str, max_words: int = 400) -> str:
     return " ".join(text.split()[:max_words])
 
 
-def scrape_naukri(target_roles: list[str], target_locations: list[str]) -> list[dict]:
+async def scrape_naukri(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
     for role in target_roles:
         loc = target_locations[0] if target_locations else ""
         url = f"https://www.naukri.com/{role.replace(' ', '-').lower()}-jobs-in-{loc.replace(' ', '-').lower()}"
         try:
-            resp = httpx.get(url, headers=HEADERS, timeout=15, follow_redirects=True)
+            async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
+                resp = await client.get(url)
             soup = BeautifulSoup(resp.text, "html.parser")
             for card in soup.select("article.jobTuple, div.cust-job-tuple"):
                 title_el = card.select_one("a.title, a.ellipsis")
@@ -38,13 +39,14 @@ def scrape_naukri(target_roles: list[str], target_locations: list[str]) -> list[
     return jobs
 
 
-def scrape_linkedin(target_roles: list[str], target_locations: list[str]) -> list[dict]:
+async def scrape_linkedin(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
     for role in target_roles:
         loc = target_locations[0] if target_locations else ""
         url = f"https://www.linkedin.com/jobs/search/?keywords={role.replace(' ', '%20')}&location={loc.replace(' ', '%20')}"
         try:
-            resp = httpx.get(url, headers=HEADERS, timeout=15, follow_redirects=True)
+            async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
+                resp = await client.get(url)
             soup = BeautifulSoup(resp.text, "html.parser")
             for card in soup.select("div.base-card"):
                 title_el = card.select_one("h3.base-search-card__title")
@@ -63,13 +65,14 @@ def scrape_linkedin(target_roles: list[str], target_locations: list[str]) -> lis
     return jobs
 
 
-def scrape_indeed(target_roles: list[str], target_locations: list[str]) -> list[dict]:
+async def scrape_indeed(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
     for role in target_roles:
         loc = target_locations[0] if target_locations else ""
         url = f"https://www.indeed.com/jobs?q={role.replace(' ', '+')}&l={loc.replace(' ', '+')}"
         try:
-            resp = httpx.get(url, headers=HEADERS, timeout=15, follow_redirects=True)
+            async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
+                resp = await client.get(url)
             soup = BeautifulSoup(resp.text, "html.parser")
             for card in soup.select("div.job_seen_beacon"):
                 title_el = card.select_one("h2.jobTitle span")
@@ -88,7 +91,7 @@ def scrape_indeed(target_roles: list[str], target_locations: list[str]) -> list[
     return jobs
 
 
-def scrape_jobs(profile: dict, target_count: int = 50) -> list[dict]:
+async def scrape_jobs(profile: dict, target_count: int = 50) -> list[dict]:
     js = profile.get("job_search", {})
     roles = js.get("target_roles", [])
     locations = js.get("target_locations", [])
@@ -97,7 +100,7 @@ def scrape_jobs(profile: dict, target_count: int = 50) -> list[dict]:
     for source_fn in (scrape_naukri, scrape_linkedin, scrape_indeed):
         if len(results) >= target_count:
             break
-        for job in source_fn(roles, locations):
+        for job in await source_fn(roles, locations):
             if job["url"] in seen_urls:
                 continue
             seen_urls.add(job["url"])

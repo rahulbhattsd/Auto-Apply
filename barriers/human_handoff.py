@@ -16,3 +16,13 @@ def should_resume(job_id: int) -> bool:
 def should_skip(job_id: int) -> bool:
     job = db.get_job(job_id)
     return bool(job and job["status"] == "skip_requested")
+
+async def try_otp(config_path: str = "config.yaml", timeout_sec: int = 90) -> str | None:
+    import asyncio, yaml
+    from barriers.otp import wait_for_otp
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
+    g = cfg.get("gmail", {})
+    if not g.get("user") or not g.get("app_password"):
+        return None
+    return await asyncio.to_thread(wait_for_otp, g["user"], g["app_password"], timeout_sec)

@@ -1,7 +1,11 @@
-﻿config.yaml
+config.yaml
 venv/
 *.db
 logs/
 PAUSE_FLAG
 __pycache__/
 *.pyc
+profile.yaml
+resume_base.json
+resumes/
+cache.db

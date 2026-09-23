@@ -4,6 +4,7 @@ core/db.py — SQLite schema + helper functions.
 Tables: jobs, llm_cache, stats. Single file: data.db (not committed).
 """
 
+import json
 import sqlite3
 from contextlib import closing
 from datetime import date
@@ -143,11 +144,32 @@ def set_cached_response(prompt_hash: str, response: str, db_path: str = DB_PATH)
                    ON CONFLICT(prompt_hash) DO UPDATE SET response = excluded.response""",
                 (prompt_hash, response),
             )
+
+
+def get_llm_cache(key: str, db_path: str = DB_PATH) -> dict | None:
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute(
+            "SELECT response FROM llm_cache WHERE prompt_hash = ?", (key,)
+        ).fetchone()
+        return json.loads(row["response"]) if row else None
+
+
+def set_llm_cache(key: str, value: dict, db_path: str = DB_PATH) -> None:
+    with closing(get_connection(db_path)) as conn:
+        with conn:
+            conn.execute(
+                """INSERT INTO llm_cache (prompt_hash, response) VALUES (?, ?)
+                   ON CONFLICT(prompt_hash) DO UPDATE SET response = excluded.response""",
+                (key, json.dumps(value)),
+            )
+
+
 def get_job(job_id: int, db_path: str = DB_PATH) -> dict | None:
     with closing(get_connection(db_path)) as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return dict(row) if row else None
-    
+
+
 def bump_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
     if field not in ("applied", "stuck", "failed"):
         return
@@ -176,3 +198,10 @@ def get_today_stats(db_path: str = DB_PATH) -> dict:
             "SELECT applied, stuck, failed FROM stats WHERE date = ?", (day,)
         ).fetchone()
         return dict(row) if row else {"applied": 0, "stuck": 0, "failed": 0}
+
+
+def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:
+    from contextlib import closing
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute("SELECT id FROM jobs WHERE jd_hash = ?", (jd_hash,)).fetchone()
+        return row["id"] if row else None
