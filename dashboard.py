@@ -27,6 +27,11 @@ async def get_stats():
     return JSONResponse(db.get_today_stats())
 
 
+@app.get("/api/blocked")
+async def get_blocked():
+    return JSONResponse(db.get_blocked_jobs())
+
+
 # NOTE: uses sentinel statuses 'resume_requested' / 'skip_requested'.
 # barriers.human_handoff.should_resume/should_skip must poll db.get_jobs()
 # for these values on the given job_id.
