@@ -53,6 +53,11 @@ def init_db(db_path: str = DB_PATH) -> None:
     with closing(get_connection(db_path)) as conn:
         with conn:
             conn.executescript(SCHEMA)
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN url TEXT")
+                conn.commit()
+            except Exception:
+                pass
 
 
 def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:
