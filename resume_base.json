@@ -1,37 +1,267 @@
 {
-  "summary": "",
-  "skills": {
-    "languages": [],
-    "frameworks": [],
-    "tools": [],
-    "other": []
-  },
-  "experience": [
-    {
-      "company": "",
-      "role": "",
-      "start_date": "",
-      "end_date": "",
-      "bullets": []
+  "schema_version": "1.0",
+  "candidate": {
+    "full_name": "Rahul Bhatt",
+    "first_name": "Rahul",
+    "last_name": "Bhatt",
+    "headline": "AI Engineer | Full Stack Developer | Software Engineer",
+    "location": {
+      "city": "Jabalpur",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "contact": {
+      "email": "rahulbhatt.tech@gmail.com",
+      "phone": "+91 78983 72675",
+      "linkedin": "https://www.linkedin.com/in/rahulbhatt-developer/",
+      "github": "https://github.com/rahulbhattsd",
+      "portfolio": "https://rahulbhattsd.github.io/rahul-portfolio/"
     }
-  ],
+  },
+  "professional_summary": "AI Engineer specializing in Large Language Model (LLM) integration, Retrieval-Augmented Generation (RAG), and Generative AI application development, with hands-on experience shipping production-ready AI features using the Groq API, prompt engineering, and NLP techniques. Backed by strong engineering fundamentals in Python, JavaScript/TypeScript, RESTful API design, and relational and NoSQL databases. Comfortable owning AI-driven applications end-to-end, from model/API integration to deployment, within Agile/Scrum and CI/CD workflows.",
   "education": [
     {
-      "institute": "",
-      "degree": "",
-      "field": "",
-      "start_date": "",
-      "end_date": "",
-      "cgpa": ""
+      "institution": "Gyan Ganga Institute of Technology and Sciences",
+      "degree": "Bachelor of Technology (B.Tech)",
+      "branch": "Computer Science and Engineering",
+      "university": "RGPV University",
+      "location": "Jabalpur, Madhya Pradesh, India",
+      "start_year": 2022,
+      "end_year": 2026,
+      "cgpa": 7.41
+    },
+    {
+      "institution": "Abbot Baeten School",
+      "qualification": "Higher Secondary (Class XII)",
+      "location": "Jabalpur, Madhya Pradesh, India",
+      "percentage": 73
+    },
+    {
+      "institution": "Abbot Baeten School",
+      "qualification": "Secondary (Class X)",
+      "location": "Jabalpur, Madhya Pradesh, India",
+      "percentage": 91
+    }
+  ],
+  "skills": {
+    "programming_languages": [
+      "Python",
+      "JavaScript (ES6+)",
+      "TypeScript",
+      "SQL"
+    ],
+    "ai_llm_engineering": [
+      "Large Language Models (LLMs)",
+      "Retrieval-Augmented Generation (RAG)",
+      "Prompt Engineering",
+      "Groq API Integration",
+      "Generative AI",
+      "Natural Language Processing (NLP)",
+      "AI Agent & Workflow Integration",
+      "Conversational AI",
+      "Semantic Search"
+    ],
+    "frontend": [
+      "React.js",
+      "React Hooks",
+      "React Router",
+      "Redux-style State Management",
+      "HTML5",
+      "CSS3",
+      "Responsive Web Design",
+      "Vite"
+    ],
+    "backend": [
+      "Node.js",
+      "Express.js",
+      "RESTful API Design",
+      "REST API Integration",
+      "JWT Authentication",
+      "Middleware Development"
+    ],
+    "databases": [
+      "MongoDB",
+      "PostgreSQL",
+      "MySQL",
+      "SQL",
+      "Database Design",
+      "Redis",
+      "Caching"
+    ],
+    "devops_tools": [
+      "Git",
+      "GitHub",
+      "GitLab",
+      "GitHub Actions",
+      "CI/CD",
+      "Docker",
+      "Render",
+      "Postman",
+      "Agile/Scrum"
+    ],
+    "cloud": [
+      "AWS"
+    ],
+    "computer_science": [
+      "Data Structures & Algorithms",
+      "Object-Oriented Programming (OOP)",
+      "Database Management Systems (DBMS)",
+      "Operating Systems",
+      "Computer Networks"
+    ]
+  },
+  "certifications": [
+    {
+      "name": "Generative AI with Large Language Models",
+      "issuer": "DeepLearning.AI"
+    },
+    {
+      "name": "AWS Certified Cloud Practitioner",
+      "issuer": "Amazon Web Services (AWS)"
+    },
+    {
+      "name": "Cisco DevNet Associate",
+      "issuer": "Cisco"
+    }
+  ],
+  "experience": [
+    {
+      "company": "IBM",
+      "role": "Front-End Developer Intern",
+      "employment_type": "Virtual Internship",
+      "location": "Remote",
+      "start_date": "2022-06",
+      "end_date": "2022-07",
+      "bullets": [
+        "Developed responsive, component-based user interfaces as part of front-end web development tasks in a virtual internship program.",
+        "Collaborated within an Agile/Scrum team using Git-based version control workflows, code reviews, and sprint planning ceremonies.",
+        "Wrote and executed test cases to identify UI regressions and improve overall application reliability and code quality."
+      ]
     }
   ],
   "projects": [
     {
-      "name": "",
-      "description": "",
-      "tech_stack": [],
-      "link": "",
-      "bullets": []
+      "name": "TokenGate",
+      "subtitle": "LLM Cost Gateway & API Management Platform",
+      "technologies": [
+        "React.js",
+        "TypeScript",
+        "Node.js",
+        "Express.js",
+        "PostgreSQL",
+        "Redis"
+      ],
+      "repository": "https://github.com/rahulbhattsd/TokenGate",
+      "bullets": [
+        "Engineered a unified REST API gateway in Node.js and Express.js that routes and manages requests across multiple third-party AI/LLM providers.",
+        "Built a full-stack analytics dashboard using React.js and TypeScript with authentication, API key management, request logging, and cost-trend visualization.",
+        "Implemented semantic caching and token-usage tracking to optimize API cost efficiency and reduce redundant LLM calls, using Redis for high-speed caching.",
+        "Designed a responsive, component-based frontend architecture with Vite, React Router, and TypeScript for type-safe, maintainable UI code."
+      ]
+    },
+    {
+      "name": "Mock.ai",
+      "subtitle": "AI-Powered Voice Interview Platform",
+      "technologies": [
+        "React.js",
+        "Node.js",
+        "MongoDB",
+        "REST APIs"
+      ],
+      "repository": "https://github.com/rahulbhattsd/Mock.ai",
+      "live_demo": "https://mock-ai-jw8k.onrender.com/",
+      "bullets": [
+        "Developed a full-stack MERN application delivering AI-driven mock interview simulations, using LLM-generated questions to power role-based interview workflows.",
+        "Built reusable, responsive React.js components and implemented client-side routing for seamless interview and dashboard user flows.",
+        "Designed and integrated backend REST APIs in Node.js for user authentication, interview session management, and AI-generated interview question workflows."
+      ]
+    },
+    {
+      "name": "Healthify",
+      "subtitle": "AI-Powered Health Assistant",
+      "technologies": [
+        "React.js",
+        "JavaScript",
+        "Node.js",
+        "MongoDB"
+      ],
+      "repository": "https://github.com/rahulbhattsd/healthify",
+      "live_demo": "https://healthify-31ok.onrender.com/landing",
+      "bullets": [
+        "Built a full-stack MERN application integrating AI-assisted conversation workflows with persistent, MongoDB-backed chat history across user sessions.",
+        "Developed reusable React.js frontend components connected to Node.js backend services via REST APIs for real-time AI-driven interaction.",
+        "Implemented data persistence and session management to maintain continuity of AI-driven user conversations."
+      ]
+    },
+    {
+      "name": "VibeCart",
+      "subtitle": "Full-Stack E-Commerce Platform",
+      "technologies": [
+        "React.js",
+        "JavaScript",
+        "Node.js",
+        "Express.js",
+        "MongoDB",
+        "Groq API"
+      ],
+      "repository": "https://github.com/rahulbhattsd/VibeCart",
+      "live_demo": "https://vibecart-eo6e.onrender.com/",
+      "bullets": [
+        "Engineered VibeBot, a Retrieval-Augmented Generation (RAG) customer support chatbot powered by the Groq API (Llama 3.3 70B) that retrieves live order and product data from MongoDB in real time to ground LLM responses in accurate store context.",
+        "Implemented real-time response streaming via Server-Sent Events (SSE) alongside a custom rate-limiting layer.",
+        "Architected a responsive e-commerce web application in React.js with reusable UI components, cart management, and end-to-end checkout workflows.",
+        "Designed and implemented RESTful APIs in Node.js and Express.js for product catalog, shopping cart, user authentication, and order management."
+      ]
     }
-  ]
+  ],
+  "leadership_and_extracurricular": [
+    {
+      "organization": "Udyam E-Cell, Gyan Ganga Institute of Technology and Sciences",
+      "role": "Coordinator",
+      "location": "Jabalpur, Madhya Pradesh, India",
+      "start_year": 2023,
+      "end_year": 2026,
+      "bullets": [
+        "Coordinated cross-functional student teams and mentored peers through early-stage startup ideation and development.",
+        "Guided students in structuring pitch decks and facilitating group discussion and brainstorming sessions.",
+        "Organized and managed entrepreneurship events, coordinating logistics and student participation across multiple initiatives."
+      ]
+    },
+    {
+      "organization": "Open Source",
+      "role": "Independent Contributor",
+      "location": "GitHub / Remote",
+      "status": "Ongoing",
+      "bullets": [
+        "Contributed code, bug fixes, and documentation improvements to publicly hosted open-source repositories on GitHub.",
+        "Collaborated with project maintainers and other contributors through pull requests, issue discussions, and code review."
+      ]
+    }
+  ],
+  "targeting": {
+    "candidate_level": "Fresher / Entry Level",
+    "years_of_experience": 0,
+    "primary_role_families": [
+      "AI Engineering",
+      "Generative AI",
+      "LLM / RAG Engineering",
+      "Software Engineering",
+      "Full Stack Development",
+      "MERN Stack Development",
+      "Backend Development",
+      "Frontend Development"
+    ],
+    "excluded_role_families": [
+      "Customer Support",
+      "Customer Service",
+      "BPO",
+      "Call Center",
+      "Non-Technical Support"
+    ]
+  },
+  "metadata": {
+    "base_resume": true,
+    "intended_use": "AutoApply Agent resume source of truth",
+    "customization_rule": "Generate role-specific resume variants from this base while preserving factual candidate information."
+  }
 }

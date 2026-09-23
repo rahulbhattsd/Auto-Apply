@@ -1,47 +1,425 @@
-# AutoApply Agent — profile.yaml
-# Personal data used to fill application forms.
+# AutoApply Agent — Rahul Bhatt profile.yaml
+# Purpose: structured profile data for automated job discovery and application form filling.
+# Source priority:
+#   1. Uploaded resume for career/education/skills/projects/experience
+#   2. User-provided conversation history for additional application preferences and links
+# Do not invent missing personal details. Blank fields should remain blank.
 
 personal:
-  full_name: ""
-  first_name: ""
-  last_name: ""
-  email: ""
-  phone: ""
+  first_name: "Rahul"
+  last_name: "Bhatt"
+  full_name: "Rahul Bhatt"
+  email: "rahulbhatt.tech@gmail.com"
+  phone: "+91 78983 72675"
+  date_of_birth: "2004-02-18"
   location:
-    city: ""
-    state: ""
-    country: ""
+    city: "Jabalpur"
+    state: "Madhya Pradesh"
+    country: "India"
     pincode: ""
 
 links:
-  linkedin: ""
-  github: ""
-  portfolio: ""
+  linkedin: "https://www.linkedin.com/in/rahulbhatt-developer/"
+  github: "https://github.com/rahulbhattsd"
+  portfolio: "https://rahulbhattsd.github.io/rahul-portfolio/"
 
 education:
-  degree: ""
-  branch: ""
-  institute: ""
-  university: ""
-  batch: ""
-  cgpa: ""
+  highest_degree: "Bachelor of Technology"
+  degree: "B.Tech"
+  branch: "Computer Science and Engineering"
+  institute: "Gyan Ganga Institute of Technology and Sciences"
+  university: "RGPV University"
+  batch_start: 2022
+  batch_end: 2026
+  cgpa: "7.41"
+  class_xii_percentage: "73%"
+  class_xii_school: "Abbot Baeten School"
+  class_x_school: "Abbot Baeten School"
+  class_x_percentage: "91%"
+
+experience:
+  total_professional_experience_years: 0
+  internships:
+    - company: "IBM"
+      role: "Front-End Developer Intern"
+      type: "Virtual Internship"
+      location: "Remote"
+      start: "2022-06"
+      end: "2022-07"
+      responsibilities:
+        - "Developed responsive, component-based user interfaces."
+        - "Worked with Agile/Scrum practices and Git-based workflows."
+        - "Participated in code reviews and sprint planning."
+        - "Wrote and executed UI test cases."
+
+certifications:
+  - "Generative AI with Large Language Models — DeepLearning.AI"
+  - "AWS Certified Cloud Practitioner — Amazon Web Services"
+  - "Cisco DevNet Associate — Cisco"
+
+skills:
+  programming_languages:
+    - "Python"
+    - "JavaScript"
+    - "TypeScript"
+    - "SQL"
+    - "C++"
+  ai_ml:
+    - "Large Language Models (LLMs)"
+    - "Retrieval-Augmented Generation (RAG)"
+    - "Prompt Engineering"
+    - "Generative AI"
+    - "Natural Language Processing (NLP)"
+    - "AI Agent & Workflow Integration"
+    - "Conversational AI"
+    - "Semantic Search"
+    - "Groq API Integration"
+  frontend:
+    - "React.js"
+    - "React Hooks"
+    - "React Router"
+    - "Redux-style State Management"
+    - "HTML5"
+    - "CSS3"
+    - "Responsive Web Design"
+    - "Vite"
+  backend:
+    - "Node.js"
+    - "Express.js"
+    - "RESTful API Design"
+    - "REST API Integration"
+    - "JWT Authentication"
+    - "Middleware Development"
+  databases:
+    - "MongoDB"
+    - "PostgreSQL"
+    - "MySQL"
+    - "SQL"
+    - "Database Design"
+    - "Redis"
+    - "Caching"
+  devops_cloud_tools:
+    - "Git"
+    - "GitHub"
+    - "GitLab"
+    - "GitHub Actions"
+    - "CI/CD"
+    - "Docker"
+    - "AWS"
+    - "Render"
+    - "Postman"
+    - "Agile/Scrum"
+  fundamentals:
+    - "Data Structures and Algorithms"
+    - "Object-Oriented Programming"
+    - "Database Management Systems"
+    - "Operating Systems"
+    - "Computer Networks"
+
+projects:
+  - name: "TokenGate"
+    title: "LLM Cost Gateway & API Management Platform"
+    technologies:
+      - "React.js"
+      - "TypeScript"
+      - "Node.js"
+      - "Express.js"
+      - "PostgreSQL"
+      - "Redis"
+    links:
+      github: "https://github.com/rahulbhattsd/TokenGate"
+    capabilities:
+      - "Multi-provider LLM routing and request management"
+      - "REST API gateway"
+      - "Authentication and API key management"
+      - "Request logging"
+      - "Cost-trend analytics"
+      - "Semantic caching"
+      - "Token-usage tracking"
+      - "Responsive TypeScript frontend"
+
+  - name: "Mock.ai"
+    title: "AI-Powered Voice Interview Platform"
+    technologies:
+      - "React.js"
+      - "Node.js"
+      - "MongoDB"
+      - "REST APIs"
+    links:
+      github: "https://github.com/rahulbhattsd/Mock.ai"
+      live: "https://mock-ai-jw8k.onrender.com/"
+    capabilities:
+      - "AI-driven mock interview simulations"
+      - "LLM-generated interview questions"
+      - "Role-based interview workflows"
+      - "User authentication"
+      - "Interview session management"
+      - "Responsive React UI"
+
+  - name: "Healthify"
+    title: "AI-Powered Health Assistant"
+    technologies:
+      - "React.js"
+      - "JavaScript"
+      - "Node.js"
+      - "MongoDB"
+    links:
+      github: "https://github.com/rahulbhattsd/healthify"
+      live: "https://healthify-31ok.onrender.com/landing"
+    capabilities:
+      - "AI-assisted conversation workflows"
+      - "Persistent MongoDB-backed chat history"
+      - "REST API integration"
+      - "Session management"
+      - "Full-stack MERN architecture"
+
+  - name: "VibeCart"
+    title: "Full-Stack E-Commerce Platform"
+    technologies:
+      - "React.js"
+      - "JavaScript"
+      - "Node.js"
+      - "Express.js"
+      - "MongoDB"
+      - "Groq API"
+    links:
+      github: "https://github.com/rahulbhattsd/VibeCart"
+      live: "https://vibecart-eo6e.onrender.com/"
+    capabilities:
+      - "VibeBot RAG customer-support chatbot"
+      - "Groq API with Llama 3.3 70B"
+      - "Live MongoDB order/product retrieval"
+      - "Server-Sent Events (SSE) streaming"
+      - "Rate limiting"
+      - "Cart and checkout workflows"
+      - "Authentication and order management"
 
 job_search:
-  target_roles:
-    - "AI Engineer"
-    - "AI Agent Developer"
+  candidate_type: "Fresher"
+  min_experience_years: 0
+  notice_period: "Immediate"
+  notice_period_days: 0
+  willing_to_relocate: true
+  remote_preferred: true
   target_locations:
     - "Remote"
-  min_experience_years: 0
-  willing_to_relocate: true
-  notice_period_days: 0
+    - "Bangalore"
+    - "Hyderabad"
+    - "Pune"
+    - "Jabalpur"
+    - "Gurgaon"
+    - "Noida"
+    - "Delhi NCR"
+  target_roles:
+    # AI / ML / GenAI
+    - "AI Engineer"
+    - "AI/ML Engineer"
+    - "Machine Learning Engineer"
+    - "Generative AI Engineer"
+    - "GenAI Engineer"
+    - "Applied AI Engineer"
+    - "Applied Machine Learning Engineer"
+    - "LLM Engineer"
+    - "Generative AI Developer"
+    - "AI Developer"
+    - "AI Application Developer"
+    - "NLP Engineer"
+    - "NLP Developer"
+    - "Conversational AI Engineer"
+    - "RAG Engineer"
+    - "RAG Developer"
+    - "AI Agent Developer"
+    - "AI Agents Engineer"
+    - "AI Automation Engineer"
+    - "AI Solutions Engineer"
+    - "AI Software Engineer"
+    - "Junior AI Engineer"
+    - "Junior ML Engineer"
+    - "Associate AI Engineer"
+    # Software Engineering
+    - "Software Engineer"
+    - "Software Development Engineer"
+    - "SDE"
+    - "SDE I"
+    - "SDE 1"
+    - "Junior Software Engineer"
+    - "Associate Software Engineer"
+    - "Graduate Software Engineer"
+    - "Entry Level Software Engineer"
+    - "Fresher Software Engineer"
+    - "Software Developer"
+    - "Junior Software Developer"
+    - "Application Developer"
+    - "Backend Engineer"
+    - "Backend Developer"
+    - "Node.js Developer"
+    - "Node.js Backend Developer"
+    - "Python Developer"
+    - "Python Backend Developer"
+    - "API Developer"
+    - "REST API Developer"
+    # Full Stack / MERN
+    - "Full Stack Developer"
+    - "Full Stack Engineer"
+    - "Junior Full Stack Developer"
+    - "Associate Full Stack Developer"
+    - "MERN Stack Developer"
+    - "MERN Developer"
+    - "MERN Stack Engineer"
+    - "Full Stack JavaScript Developer"
+    - "React Developer"
+    - "React.js Developer"
+    - "Frontend Developer"
+    - "Frontend Engineer"
+    - "Junior Frontend Developer"
+    - "Associate Frontend Developer"
+    # Platform / Cloud / DevOps entry-level roles aligned with current stack
+    - "Cloud Engineer"
+    - "Junior Cloud Engineer"
+    - "Cloud Support Engineer"
+    - "DevOps Engineer"
+    - "Junior DevOps Engineer"
+    - "DevOps Trainee"
+    - "Cloud Engineer Trainee"
+    - "Platform Engineer"
+    - "Associate Cloud Engineer"
+    # QA / automation roles compatible with development profile
+    - "Software Engineer in Test"
+    - "SDET"
+    - "Junior SDET"
+    - "QA Automation Engineer"
+    - "Test Automation Engineer"
+    - "Automation Test Engineer"
+    # General graduate technology roles
+    - "Graduate Engineer Trainee"
+    - "Graduate Software Trainee"
+    - "Technology Analyst"
+    - "IT Analyst"
+    - "Associate Technology Engineer"
+    - "Associate IT Engineer"
+    - "Assistant System Engineer"
+    - "System Engineer"
+    - "Trainee Software Engineer"
+    - "Trainee Developer"
+  excluded_roles:
+    - "Customer Support"
+    - "Customer Support Executive"
+    - "Technical Customer Support"
+    - "Customer Service"
+    - "Customer Service Representative"
+    - "Support Executive"
+    - "Call Center"
+    - "BPO"
+    - "Voice Process"
+    - "Non-Technical Support"
+  job_type:
+    - "Full-time"
+    - "Internship"
+    - "Graduate/Trainee"
+  acceptable_work_modes:
+    - "Remote"
+    - "Hybrid"
+    - "On-site"
+  fresher_friendly_only: true
+  max_experience_years_for_role: 2
+  minimum_ctc_lpa: 4
+  expected_ctc: "As per company standards"
+  application_priority:
+    - "AI/ML/GenAI"
+    - "LLM/RAG/AI Agent"
+    - "Software Engineering"
+    - "Full Stack/MERN"
+    - "Backend"
+    - "Frontend"
+    - "Cloud/DevOps"
+    - "SDET/QA Automation"
+    - "Graduate Technology Roles"
 
 eligibility:
-  work_authorization: ""
+  authorized_to_work_in_india: true
+  work_authorization: "India"
   require_visa_sponsorship: false
+  willing_to_relocate: true
   disability_status: "Prefer not to say"
   gender: ""
   veteran_status: "Not applicable"
+
+preferences:
+  preferred_stack:
+    - "Python"
+    - "JavaScript"
+    - "TypeScript"
+    - "React.js"
+    - "Node.js"
+    - "Express.js"
+    - "MongoDB"
+    - "PostgreSQL"
+    - "MySQL"
+    - "Redis"
+    - "REST APIs"
+    - "LLMs"
+    - "RAG"
+    - "Generative AI"
+  preferred_domains:
+    - "Artificial Intelligence"
+    - "Generative AI"
+    - "LLM Applications"
+    - "AI Agents"
+    - "Machine Learning Applications"
+    - "NLP"
+    - "Software Engineering"
+    - "Full Stack Web Development"
+    - "Backend Engineering"
+    - "Cloud/DevOps"
+  avoid_domains:
+    - "Customer Support"
+    - "Customer Service"
+    - "BPO"
+    - "Call Center"
+    - "Non-technical Support"
+  resume_strategy:
+    default_profile: "AI Engineer / Full Stack Developer"
+    ai_roles_profile: "AI Engineer"
+    software_roles_profile: "Software Engineer / Full Stack Developer"
+    frontend_roles_profile: "Frontend Developer"
+    backend_roles_profile: "Backend Developer"
+    cloud_roles_profile: "Cloud / DevOps Engineer"
+
+auto_apply_rules:
+  skip_customer_support_roles: true
+  skip_non_technical_support_roles: true
+  skip_bpo_roles: true
+  skip_roles_requiring_more_than_2_years_experience: true
+  skip_roles_requiring_visa_sponsorship: true
+  skip_roles_not_related_to_technology: true
+  prioritize_roles_with_keywords:
+    - "AI"
+    - "ML"
+    - "GenAI"
+    - "LLM"
+    - "RAG"
+    - "NLP"
+    - "Agent"
+    - "Software Engineer"
+    - "SDE"
+    - "Full Stack"
+    - "MERN"
+    - "React"
+    - "Node.js"
+    - "Python"
+    - "Backend"
+    - "Frontend"
+    - "Cloud"
+    - "DevOps"
+    - "SDET"
+    - "Automation"
+  required_application_behavior:
+    - "Use truthful profile data only."
+    - "Never fabricate degree, employment, certification, salary, or experience details."
+    - "Select the closest truthful answer when an application form uses different wording."
+    - "Do not apply to customer-support or unrelated support positions."
+    - "Prefer fresher and 0-2 year openings."
+    - "Use the most relevant resume variant for each target role."
 
 resume_file: "resume_base.json"
 cover_letter_template: ""
