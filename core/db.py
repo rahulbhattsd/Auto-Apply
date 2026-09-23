@@ -143,8 +143,11 @@ def set_cached_response(prompt_hash: str, response: str, db_path: str = DB_PATH)
                    ON CONFLICT(prompt_hash) DO UPDATE SET response = excluded.response""",
                 (prompt_hash, response),
             )
-
-
+def get_job(job_id: int, db_path: str = DB_PATH) -> dict | None:
+    with closing(get_connection(db_path)) as conn:
+        row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return dict(row) if row else None
+    
 def bump_stat(day: str, field: str, db_path: str = DB_PATH) -> None:
     if field not in ("applied", "stuck", "failed"):
         return

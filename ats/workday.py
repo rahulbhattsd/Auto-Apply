@@ -1,17 +1,31 @@
-"""
-ats/workday.py — Best-effort applier for Workday-hosted postings.
-
-Workday flows vary a lot per-tenant (multi-page wizards, account creation
-required, etc.) — treat this as partial support; fall back to 'stuck' with
-a clear reason whenever the flow diverges from the happy path.
-"""
+"""ats/workday.py — Best-effort applier; Workday flows vary most per-tenant."""
 
 from ats.base import ATSHandler
 
-
 class WorkdayHandler(ATSHandler):
+    SUBMIT_SELECTOR = "button[data-automation-id='bottom-navigation-next-button']"
+    FILE_INPUT_SELECTOR = "input[data-automation-id='file-upload-input-ref']"
+
     async def apply(self) -> dict:
-        # TODO: handle account creation/login step, multi-page wizard,
-        # fill_known_fields()/fill_unknown_fields() per page, submit.
-        # Mark 'stuck' early and often here — Workday is the least uniform ATS.
-        pass
+        page = self.page
+        if await page.query_selector("input[data-automation-id='signInPassword']"):
+            return {"status": "stuck", "reason": "Workday login/account creation required"}
+        if reason := await self.check_barriers():
+            return {"status": "stuck", "reason": reason}
+
+        await self.fill_known_fields()
+        await self.upload_resume(self.resume.get("resume_path", ""))
+        await self.fill_unknown_fields()
+
+        if reason := await self.check_barriers():
+            return {"status": "stuck", "reason": reason}
+
+        submit = await page.query_selector(self.SUBMIT_SELECTOR)
+        if not submit:
+            return {"status": "stuck", "reason": "non-standard Workday flow"}
+        await submit.click()
+        await page.wait_for_timeout(1500)
+
+        if await page.query_selector("text=/review|complete/i"):
+            return {"status": "applied", "reason": None}
+        return {"status": "stuck", "reason": "Workday flow did not reach confirmation"}

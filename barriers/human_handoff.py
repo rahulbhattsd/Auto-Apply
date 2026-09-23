@@ -1,26 +1,17 @@
-"""
-barriers/human_handoff.py — Pause / resume flow bridging the agent loop
-and Telegram commands.
+"""barriers/human_handoff.py — Pause/resume bridge, polled by main.py's retry loop."""
 
-When an ats/*.py handler hits something it can't clear (CAPTCHA, phone
-OTP, login wall), it calls pause_for_human() here. main.py's loop should
-poll should_resume()/should_skip() (backed by job status in core.db,
-updated by bot.py's /resume_<id> and /skip_<id> handlers) before moving on.
-"""
-
-# TODO: from core import db, notifier
-
+from core import db
+from core.notifier import notify_job_stuck
 
 async def pause_for_human(job_id: int, reason: str, screenshot_path: str) -> None:
-    """Mark job 'stuck' in DB and send the Telegram notification with screenshot."""
-    pass
-
+    job = db.get_job(job_id)
+    db.update_job_status(job_id, "stuck", stuck_reason=reason, screenshot_path=screenshot_path)
+    await notify_job_stuck(job_id, job["company"] if job else "?", reason, screenshot_path)
 
 def should_resume(job_id: int) -> bool:
-    """True if the user sent /resume_<job_id> since it went stuck."""
-    pass
-
+    job = db.get_job(job_id)
+    return bool(job and job["status"] == "resume_requested")
 
 def should_skip(job_id: int) -> bool:
-    """True if the user sent /skip_<job_id> since it went stuck."""
-    pass
+    job = db.get_job(job_id)
+    return bool(job and job["status"] == "skip_requested")

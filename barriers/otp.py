@@ -1,33 +1,38 @@
-"""
-barriers/otp.py — Gmail IMAP OTP auto-reader.
+"""barriers/otp.py — Gmail IMAP OTP auto-reader (email OTP only, no phone OTP)."""
 
-Polls the inbox (imaplib, built-in) for a recent unread email containing a
-numeric code and extracts it. Only handles EMAIL OTP — phone OTP has no
-free path and is NOT handled here (see main constraints: skip or hand off
-to Telegram).
-"""
+import imaplib, email, re, time
 
-import imaplib
-import email
-import re
-import time
-
-
-def connect(gmail_user: str, app_password: str, imap_host: str = "imap.gmail.com"):
-    """Open an authenticated IMAP4_SSL connection."""
-    pass
-
-
-def wait_for_otp(gmail_user: str, app_password: str, timeout_sec: int = 90) -> str | None:
-    """
-    Poll INBOX for a new email (from the target company) containing an OTP
-    code. Returns the extracted code, or None on timeout.
-    """
-    # TODO: search recent UNSEEN messages, regex for 4-8 digit codes
-    pass
-
+def connect(gmail_user: str, app_password: str, imap_host: str = "imap.gmail.com") -> imaplib.IMAP4_SSL:
+    conn = imaplib.IMAP4_SSL(imap_host)
+    conn.login(gmail_user, app_password)
+    conn.select("INBOX")
+    return conn
 
 def extract_code(body: str) -> str | None:
-    """Regex-extract a 4-8 digit numeric code from an email body."""
-    match = re.search(r"\b\d{4,8}\b", body)
-    return match.group(0) if match else None
+    m = re.search(r"\b\d{4,8}\b", body or "")
+    return m.group(0) if m else None
+
+def wait_for_otp(gmail_user: str, app_password: str, timeout_sec: int = 90) -> str | None:
+    deadline = time.monotonic() + timeout_sec
+    conn = connect(gmail_user, app_password)
+    try:
+        while time.monotonic() < deadline:
+            _, data = conn.search(None, "UNSEEN")
+            for num in reversed(data[0].split()):
+                _, msg_data = conn.fetch(num, "(RFC822)")
+                msg = email.message_from_bytes(msg_data[0][1])
+                body = ""
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        if part.get_content_type() == "text/plain":
+                            body += part.get_payload(decode=True).decode(errors="ignore")
+                else:
+                    body = msg.get_payload(decode=True).decode(errors="ignore")
+                code = extract_code(msg.get("Subject", "") + " " + body)
+                if code:
+                    conn.store(num, "+FLAGS", "\\Seen")
+                    return code
+            time.sleep(5)
+        return None
+    finally:
+        conn.logout()

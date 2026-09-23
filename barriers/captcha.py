@@ -1,19 +1,17 @@
-"""
-barriers/captcha.py — CAPTCHA / bot-check detection on the current page.
+"""barriers/captcha.py — CAPTCHA / bot-check detection only (never solves)."""
 
-This module DETECTS and reports only — it never attempts to solve or bypass
-CAPTCHAs. On detection, the caller (ats/*.py) should take a screenshot,
-mark the job 'stuck', and hand off to the user via Telegram
-(barriers/human_handoff.py).
-"""
-
+MARKERS = [
+    ("iframe[src*='recaptcha']", "reCAPTCHA detected"),
+    ("iframe[src*='hcaptcha']", "hCaptcha detected"),
+    ("div.cf-turnstile, iframe[src*='challenges.cloudflare.com']", "Cloudflare Turnstile detected"),
+    ("text=/verify you are human|are you a robot/i", "generic bot-check text detected"),
+]
 
 async def detect_captcha(page) -> str | None:
-    """
-    Look for common CAPTCHA / bot-check markers on the page
-    (reCAPTCHA iframe, hCaptcha iframe, Cloudflare Turnstile challenge).
-    Returns a short reason string if found, else None.
-    """
-    # TODO: check for iframe[src*='recaptcha'], iframe[src*='hcaptcha'],
-    # Cloudflare challenge markers, etc.
-    pass
+    for selector, reason in MARKERS:
+        try:
+            if await page.query_selector(selector):
+                return reason
+        except Exception:
+            continue
+    return None
