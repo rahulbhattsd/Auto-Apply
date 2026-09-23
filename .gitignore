@@ -1,36 +1,7 @@
-# Python
+﻿config.yaml
+venv/
+*.db
+logs/
+PAUSE_FLAG
 __pycache__/
 *.pyc
-*.pyo
-venv/
-.venv/
-*.egg-info/
-
-# Data & secrets
-data.db
-config.yaml
-profiles/resumes/
-profiles/screenshots/
-
-# Logs
-logs/*.log
-
-# OS / editor
-.DS_Store
-.vscode/
-.idea/
-
-# Project-specific ignores (added by bug fix)
-config.yaml
-.env
-data.db
-data.db-journal
-data.db-wal
-data.db-shm
-test_data.db
-profiles/resumes/*
-!profiles/resumes/.gitkeep
-profiles/screenshots/*
-!profiles/screenshots/.gitkeep
-logs/*.log
-!logs/.gitkeep
