@@ -1,7 +1,30 @@
-﻿config.yaml
+﻿# Secrets & personal data
+config.yaml
+profile.yaml
+resume_base.json
+
+# Resumes (personal PDFs)
+resumes/
+resume.pdf
+
+# Virtual environment
 venv/
+
+# Databases
 *.db
+cache.db
+data.db
+
+# Logs & runtime
 logs/
 PAUSE_FLAG
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+
+# Env files
+.env
+.env.*
