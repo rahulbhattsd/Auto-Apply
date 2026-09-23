@@ -8,6 +8,10 @@ class LeverHandler(ATSHandler):
 
     async def apply(self) -> dict:
         try:
+            if await self.page.query_selector(
+                "input[type=password], form[action*=login], form[action*=signin]"
+            ):
+                return {"status": "stuck", "reason": "login wall detected"}
             if reason := await self.check_barriers():
                 return {"status": "stuck", "reason": reason}
             await self.fill_known_fields()

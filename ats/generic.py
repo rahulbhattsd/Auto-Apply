@@ -6,6 +6,9 @@ from ats.base import ATSHandler
 class GenericHandler(ATSHandler):
     async def apply(self) -> dict:
         try:
+            if not self.page.url or self.page.url.startswith("about:"):
+                return {"status": "failed", "reason": "site unreachable"}
+
             if reason := await self.check_barriers():
                 return {"status": "stuck", "reason": reason}
 
@@ -33,7 +36,8 @@ class GenericHandler(ATSHandler):
                 )
                 return {"status": "applied", "reason": None}
             except Exception:
-                return {"status": "stuck", "reason": "no confirmation detected"}
+                title = await self.page.title()
+                return {"status": "stuck", "reason": f"no confirmation detected (page: {title[:40]})"}
 
         except Exception as e:
             return {"status": "failed", "reason": str(e)}

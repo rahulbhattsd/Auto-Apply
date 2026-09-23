@@ -207,3 +207,33 @@ def get_blocked_jobs(db_path: str = DB_PATH) -> list[dict]:
             "SELECT * FROM jobs WHERE status = 'blocked' ORDER BY id DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def categorize_reason(raw: str | None) -> str:
+    """Turn a raw failure reason into a short human-readable label."""
+    if not raw:
+        return ""
+    r = raw.lower()
+    if "cloudflare" in r or "turnstile" in r or "cf-" in r:
+        return "Cloudflare"
+    if "captcha" in r or "recaptcha" in r or "hcaptcha" in r or "robot" in r:
+        return "CAPTCHA"
+    if "otp" in r or "verification code" in r or "one-time" in r:
+        return "OTP"
+    if "login" in r or "sign in" in r or "signin" in r or "account creation" in r:
+        return "Login wall"
+    if "profile creation" in r or "create profile" in r or "register" in r:
+        return "Profile creation"
+    if "timeout" in r or "timed out" in r:
+        return "Timeout"
+    if "err_name_not_resolved" in r or "err_connection" in r or "net::err" in r or "dns" in r:
+        return "Site unreachable"
+    if "no submission confirmation" in r or "no confirmation" in r:
+        return "No confirmation"
+    if "no easy apply" in r:
+        return "No Easy Apply"
+    if "unrecognized" in r:
+        return "Unrecognized form"
+    if "non-standard workday" in r:
+        return "Workday non-standard"
+    return raw[:60] if len(raw) > 60 else raw

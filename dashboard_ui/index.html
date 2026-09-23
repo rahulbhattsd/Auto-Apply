@@ -39,6 +39,7 @@
           <th class="p-3 text-left">Role</th>
           <th class="p-3 text-left">Link</th>
           <th class="p-3 text-left">Status</th>
+          <th class="p-3 text-left">Reason</th>
           <th class="p-3 text-left">Applied At</th>
           <th class="p-3 text-left">Actions</th>
         </tr>
@@ -57,6 +58,9 @@
             <td class="p-3">
               <span class="px-2 py-1 rounded-full text-xs font-medium"
                 :class="badgeClass(job.status)" x-text="job.status"></span>
+            </td>
+            <td class="p-3">
+              <span class="text-xs text-gray-300" x-text="job.reason_label || '-'"></span>
             </td>
             <td class="p-3 text-gray-400" x-text="job.applied_at || '-'"></td>
             <td class="p-3 space-x-2">

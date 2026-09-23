@@ -8,6 +8,10 @@ class WorkdayHandler(ATSHandler):
 
     async def apply(self) -> dict:
         page = self.page
+        if await self.page.query_selector(
+            "input[type=password], form[action*=login], form[action*=signin]"
+        ):
+            return {"status": "stuck", "reason": "login wall detected"}
         if await page.query_selector("input[data-automation-id='signInPassword']"):
             return {"status": "stuck", "reason": "Workday login/account creation required"}
         if reason := await self.check_barriers():
