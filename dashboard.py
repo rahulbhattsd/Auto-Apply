@@ -19,7 +19,10 @@ async def index():
 
 @app.get("/api/jobs")
 async def get_jobs(limit: int = 50, status: str | None = None):
-    return JSONResponse(db.get_jobs(limit=limit, status=status))
+    jobs = db.get_jobs(limit=limit, status=status)
+    for j in jobs:
+        j["reason_label"] = db.categorize_reason(j.get("stuck_reason"))
+    return JSONResponse(jobs)
 
 
 @app.get("/api/stats")
