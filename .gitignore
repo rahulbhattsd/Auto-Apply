@@ -1,4 +1,4 @@
-﻿# Secrets & personal data
+# Secrets & personal data
 config.yaml
 profile.yaml
 resume_base.json
@@ -17,6 +17,8 @@ data.db
 
 # Logs & runtime
 logs/
+debug/
+user_data/
 PAUSE_FLAG
 
 # Python

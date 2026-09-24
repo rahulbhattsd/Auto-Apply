@@ -66,7 +66,7 @@ def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:
         return row["id"] if row else None
 
 
-def insert_job(company: str, role: str, url: str, jd_text: str, jd_hash: str,
+def insert_job(company: str, role: str, url: str, jd_text: str = "", jd_hash: str = "",
                db_path: str = DB_PATH) -> int | None:
     with closing(get_connection(db_path)) as conn:
         with conn:
@@ -132,7 +132,6 @@ def update_job_status(job_id: int, status: str, stuck_reason: str = None,
 
     if status in ("applied", "stuck", "failed") and status != old_status:
         day = date.today().isoformat()
-        # If we're transitioning away from a counted status, decrement it
         if old_status in ("applied", "stuck", "failed"):
             decrement_stat(day, old_status, db_path=db_path)
         bump_stat(day, status, db_path=db_path)
@@ -201,7 +200,6 @@ def get_today_stats(db_path: str = DB_PATH) -> dict:
 
 
 def get_blocked_jobs(db_path: str = DB_PATH) -> list[dict]:
-    from contextlib import closing
     with closing(get_connection(db_path)) as conn:
         rows = conn.execute(
             "SELECT * FROM jobs WHERE status = 'blocked' ORDER BY id DESC"
@@ -209,31 +207,29 @@ def get_blocked_jobs(db_path: str = DB_PATH) -> list[dict]:
         return [dict(r) for r in rows]
 
 
-def categorize_reason(raw: str | None) -> str:
-    """Turn a raw failure reason into a short human-readable label."""
-    if not raw:
-        return ""
-    r = raw.lower()
-    if "cloudflare" in r or "turnstile" in r or "cf-" in r:
-        return "Cloudflare"
-    if "captcha" in r or "recaptcha" in r or "hcaptcha" in r or "robot" in r:
-        return "CAPTCHA"
-    if "otp" in r or "verification code" in r or "one-time" in r:
-        return "OTP"
-    if "login" in r or "sign in" in r or "signin" in r or "account creation" in r:
-        return "Login wall"
-    if "profile creation" in r or "create profile" in r or "register" in r:
-        return "Profile creation"
-    if "timeout" in r or "timed out" in r:
-        return "Timeout"
-    if "err_name_not_resolved" in r or "err_connection" in r or "net::err" in r or "dns" in r:
-        return "Site unreachable"
-    if "no submission confirmation" in r or "no confirmation" in r:
-        return "No confirmation"
-    if "no easy apply" in r:
-        return "No Easy Apply"
-    if "unrecognized" in r:
-        return "Unrecognized form"
-    if "non-standard workday" in r:
-        return "Workday non-standard"
-    return raw[:60] if len(raw) > 60 else raw
+class JobObject:
+    def __init__(self, row: dict):
+        self.id = row.get("id")
+        self.url = row.get("url", "")
+        self.company = row.get("company", "")
+        self.role = row.get("role", "")
+        self.status = row.get("status", "")
+
+
+class Database:
+    def __init__(self, db_path: str = DB_PATH):
+        self.db_path = db_path
+        init_db(self.db_path)
+
+    def get_pending_jobs(self) -> list[JobObject]:
+        rows = get_queued_jobs(db_path=self.db_path)
+        return [JobObject(r) for r in rows]
+
+    def update_job_status(self, job_id: int, status: str, stuck_reason: str = None):
+        update_job_status(job_id, status, stuck_reason=stuck_reason, db_path=self.db_path)
+
+    def insert_job(self, company: str, role: str, url: str, jd_text: str = "", jd_hash: str = ""):
+        return insert_job(company, role, url, jd_text, jd_hash, db_path=self.db_path)
+
+    def get_job(self, job_id: int):
+        return get_job(job_id, db_path=self.db_path)
