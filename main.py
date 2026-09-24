@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import yaml
 from core.browser_manager import BrowserManager
 from core.llm import GroqPool
@@ -26,7 +26,7 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
             await page.screenshot(path=screenshot_path, full_page=True)
             with open(html_path, "w") as f:
                 f.write(await page.content())
-            print(f"[✗] Job #{job_id} failed: {result['reason']}. Debug files saved.")
+            print(f"[âœ—] Job #{job_id} failed: {result['reason']}. Debug files saved.")
         return result
     except Exception as e:
         import traceback
@@ -56,3 +56,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
