@@ -222,8 +222,16 @@ class Database:
         init_db(self.db_path)
 
     def get_pending_jobs(self) -> list[JobObject]:
-        rows = get_queued_jobs(db_path=self.db_path)
-        return [JobObject(r) for r in rows]
+        import sqlite3
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            cur = con.cursor()
+            cur.execute("SELECT * FROM jobs WHERE status IN ('pending','queued') ORDER BY id")
+            rows = cur.fetchall()
+        finally:
+            con.close()
+        return [JobObject(dict(r)) for r in rows]
 
     def update_job_status(self, job_id: int, status: str, stuck_reason: str = None):
         update_job_status(job_id, status, stuck_reason=stuck_reason, db_path=self.db_path)
@@ -233,3 +241,30 @@ class Database:
 
     def get_job(self, job_id: int):
         return get_job(job_id, db_path=self.db_path)
+
+
+# ============================================================
+# Reason categorization for dashboard "Reason" column
+# ============================================================
+def categorize_reason(reason: str | None) -> str:
+    """Bucket a raw failure/stuck reason into a short human-readable label."""
+    if not reason:
+        return "unknown"
+    r = str(reason).lower()
+
+    buckets = [
+        ("captcha",        ["captcha", "recaptcha", "hcaptcha", "turnstile"]),
+        ("login",          ["login", "sign in", "signin", "auth", "session expired", "logged out"]),
+        ("blocked",        ["blocked", "cloudflare", "perimeterx", "datadome", "access denied", "403"]),
+        ("rate_limited",   ["rate limit", "too many requests", "429", "quota"]),
+        ("easy_apply_gone",["easy apply", "no longer accepting", "not available", "already applied"]),
+        ("field_missing",  ["no such element", "not found", "locator", "timeout", "waiting for"]),
+        ("llm_error",      ["groq", "llm", "model", "api key", "all groq keys"]),
+        ("nav_error",      ["net::", "navigation", "err_", "dns", "connection"]),
+        ("timeout",        ["timeout", "timed out"]),
+        ("parse_error",    ["json", "yaml", "parse", "decode"]),
+    ]
+    for label, needles in buckets:
+        if any(n in r for n in needles):
+            return label
+    return "other"

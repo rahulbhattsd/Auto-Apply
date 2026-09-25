@@ -30,3 +30,13 @@ __pycache__/
 # Env files
 .env
 .env.*
+config.yaml.backup
+.env
+.env.*
+!.env.example
+state.json
+linkedin_login.png
+__pycache__/
+*.pyc
+venv/
+.venv/

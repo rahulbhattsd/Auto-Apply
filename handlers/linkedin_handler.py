@@ -1,140 +1,116 @@
 import asyncio
-import re
 from playwright.async_api import Page
-from core.dom_utils import extract_all_form_fields, find_and_fill_field
 from core.llm import GroqPool
+
 
 class LinkedInHandler:
     def __init__(self, page: Page, llm_pool: GroqPool, resume_text: str):
         self.page = page
         self.llm_pool = llm_pool
         self.resume_text = resume_text
-        self.phone = self._extract_phone(resume_text)
-        self.email = self._extract_email(resume_text)
-
-    def _extract_phone(self, text: str) -> str:
-        if not text:
-            return "123-456-7890"
-        match = re.search(r'Phone:\s*([^\n]+)', text, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        match = re.search(r'(\+?\d[\d\s\-\(\)]{7,}\d)', text)
-        return match.group(1).strip() if match else "123-456-7890"
-
-    def _extract_email(self, text: str) -> str:
-        if not text:
-            return "your@email.com"
-        match = re.search(r'Email:\s*([^\n]+)', text, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
-        return match.group(0).strip() if match else "your@email.com"
 
     async def apply(self, job_url: str):
-        await self.page.goto(job_url, wait_until="networkidle")
-        await asyncio.sleep(2)
-
-        # 1. Click the "Easy Apply" button
-        easy_apply_btn = self.page.get_by_role("button", name="Easy Apply")
-        if not await easy_apply_btn.is_visible():
-            # Try alternative selectors
-            easy_apply_btn = self.page.locator('button[aria-label*="Easy Apply"]')
-        if not await easy_apply_btn.is_visible():
-            return {"status": "failed", "reason": "Easy Apply button not found"}
-
-        await easy_apply_btn.click()
+        # 1. Navigate to job page
+        try:
+            await self.page.goto(job_url, wait_until="domcontentloaded", timeout=60000)
+        except Exception as e:
+            return {"status": "failed", "reason": f"Navigation failed: {e}"}
         await asyncio.sleep(3)
 
-        # 2. Handle the multi-step modal (inside iframe + shadow DOM)
-        # LinkedIn's Easy Apply modal is inside a same-origin iframe
-        modal_frame = self.page.frame_locator('iframe[title*="Easy Apply"]')
-        # If the iframe title changes, try a generic iframe locator
-        if await modal_frame.locator("body").count() == 0:
-            modal_frame = self.page.frame_locator("iframe").first
+        # 2. Check for Easy Apply button FIRST (before touching iframe)
+        easy_apply = self.page.locator('button:has-text("Easy Apply")').first
+        try:
+            await easy_apply.wait_for(state="visible", timeout=8000)
+        except Exception:
+            # Check if it's an external application link
+            external = self.page.locator('a:has-text("Apply"), button:has-text("Apply")').first
+            try:
+                if await external.count() > 0 and await external.is_visible():
+                    return {"status": "skipped", "reason": "External application (no Easy Apply)"}
+            except Exception:
+                pass
+            return {"status": "skipped", "reason": "No Easy Apply button"}
 
-        max_steps = 10
+        # 3. Click Easy Apply
+        try:
+            await easy_apply.click()
+        except Exception as e:
+            return {"status": "failed", "reason": f"Easy Apply click failed: {e}"}
+
+        await asyncio.sleep(3)
+
+        # 4. NOW look for the modal iframe
+        iframe_selector = 'iframe[title*="Easy Apply"], iframe[src*="easy-apply"], iframe[title*="Apply"]'
+        modal = self.page.frame_locator(iframe_selector)
+
+        iframe_attached = False
+        for _ in range(10):
+            try:
+                cnt = await self.page.locator(iframe_selector).count()
+                if cnt > 0:
+                    iframe_attached = True
+                    break
+            except Exception:
+                pass
+            await asyncio.sleep(1)
+
+        if not iframe_attached:
+            return {"status": "failed", "reason": "Easy Apply modal iframe did not appear"}
+
+        # 5. Step through the multi-step modal
+        try:
+            await modal.locator("body").wait_for(state="attached", timeout=10000)
+        except Exception as e:
+            return {"status": "failed", "reason": f"Modal body not found: {e}"}
+
+        max_steps = 15
+        submitted = False
         for step in range(max_steps):
-            # Check if the modal is still open
-            if await modal_frame.locator("body").count() == 0:
-                break  # Modal closed, likely submitted
+            await asyncio.sleep(2)
 
-            # Extract field metadata using a frame-aware script
-            field_data = await self._extract_fields_from_frame(modal_frame)
+            # Check for submit confirmation
+            try:
+                page_text = await self.page.evaluate(
+                    "document.body ? document.body.innerText : ''"
+                )
+                if "Application submitted" in page_text or "Your application was sent" in page_text:
+                    submitted = True
+                    break
+            except Exception:
+                pass
 
-            # Separate known and unknown fields
-            known_fields = {}
-            unknown_fields = []
-            for field in field_data:
-                name = field.get('accessible_name', '').lower()
-                if 'phone' in name and 'phone' not in known_fields:
-                    known_fields[field['accessible_name']] = self.phone
-                elif 'email' in name:
-                    known_fields[field['accessible_name']] = self.email
-                else:
-                    unknown_fields.append(field)
+            # Try buttons in priority order
+            clicked = False
+            for btn_name in ["Submit application", "Review", "Next", "Continue"]:
+                try:
+                    btn = modal.get_by_role("button", name=btn_name).first
+                    if await btn.count() > 0 and await btn.is_visible():
+                        await btn.click()
+                        clicked = True
+                        await asyncio.sleep(2)
+                        break
+                except Exception:
+                    continue
 
-            # Fill known fields
-            for field_name, value in known_fields.items():
-                await self._fill_field_in_frame(modal_frame, field_name, value)
-
-            # Ask LLM for unknown fields
-            if unknown_fields:
-                mapping = await self.llm_pool.map_fields_batch(unknown_fields, self.resume_text)
-                if isinstance(mapping, dict):
-                    for field_name, value in mapping.items():
-                        if value:
-                            await self._fill_field_in_frame(modal_frame, field_name, value)
-
-            # Click "Next", "Review", or "Submit"
-            next_btn = modal_frame.get_by_role("button", name="Next")
-            if not await next_btn.is_visible():
-                next_btn = modal_frame.get_by_role("button", name="Review")
-            if not await next_btn.is_visible():
-                next_btn = modal_frame.get_by_role("button", name="Submit application")
-            if not await next_btn.is_visible():
-                # Try generic submit button
-                next_btn = modal_frame.locator('button[type="submit"]')
-
-            if await next_btn.is_visible():
-                await next_btn.click()
-                await asyncio.sleep(2)
-            else:
-                break  # No next button, maybe we are done
-
-        # Check for success
-        success_msg = self.page.get_by_text("Application submitted")
-        if await success_msg.is_visible():
-            return {"status": "success"}
-        else:
-            return {"status": "failed", "reason": "Could not complete Easy Apply flow"}
-
-    async def _extract_fields_from_frame(self, frame_locator) -> list[dict]:
-        """Extract field metadata from within an iframe using a JS evaluation on the frame's document."""
-        target_frame = None
-        for frame in self.page.frames:
-            if frame != self.page.main_frame and ("easy-apply" in frame.url.lower() or "job" in frame.url.lower()):
-                target_frame = frame
+            if not clicked:
+                # No more buttons - could be done or stuck
                 break
-        if not target_frame and len(self.page.frames) > 1:
-            target_frame = self.page.frames[1]
 
-        if target_frame:
-            return await extract_all_form_fields(target_frame)
-        return await extract_all_form_fields(self.page)
-
-    async def _fill_field_in_frame(self, frame_locator, field_name: str, value: str):
+        # 6. Determine final status
+        await asyncio.sleep(2)
         try:
-            loc = frame_locator.get_by_label(field_name, exact=False)
-            if await loc.count() > 0:
-                await loc.first.fill(str(value))
-                return True
+            final_text = await self.page.evaluate("document.body ? document.body.innerText : ''")
+            if "Application submitted" in final_text or "Your application was sent" in final_text:
+                return {"status": "success"}
         except Exception:
             pass
+
+        # Check if iframe closed (modal dismissed)
         try:
-            loc = frame_locator.locator(f'[name="{field_name}"]')
-            if await loc.count() > 0:
-                await loc.first.fill(str(value))
-                return True
+            iframe_count = await self.page.locator(iframe_selector).count()
+            if iframe_count == 0:
+                return {"status": "success", "reason": "Modal closed after submit"}
         except Exception:
             pass
-        return False
+
+        return {"status": "failed", "reason": "Easy Apply flow incomplete or stuck"}

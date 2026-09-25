@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import yaml
 from core.browser_manager import BrowserManager
 from core.llm import GroqPool
@@ -24,7 +24,7 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
             screenshot_path = f"./debug/job_{job_id}_failed.png"
             html_path = f"./debug/job_{job_id}_failed.html"
             await page.screenshot(path=screenshot_path, full_page=True)
-            with open(html_path, "w") as f:
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(await page.content())
             print(f"[âœ—] Job #{job_id} failed: {result['reason']}. Debug files saved.")
         return result
@@ -38,16 +38,32 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
         return {"status": "failed", "reason": str(e)}
 
 async def main():
-    with open("config.yaml", "r") as f:
+    with open("config.yaml", "r", encoding="utf-8-sig") as f:
         config = yaml.safe_load(f)
 
     db = Database()
-    llm_pool = GroqPool(config["groq_api_keys"])
+    groq_keys = (
+        config.get("groq_api_keys")
+        or config.get("groq", {}).get("keys")
+        or []
+    )
+    if not groq_keys:
+        raise RuntimeError(
+            "No Groq API keys found in config.yaml. "
+            "Add them under groq.keys (list) or groq_api_keys (list)."
+        )
+    llm_pool = GroqPool(groq_keys)
     browser_manager = BrowserManager()
     await browser_manager.start()
 
     # Get pending jobs from DB
+    import os
+    print(f">>> DB path: {os.path.abspath('data.db')}")
+    print(f">>> DB exists: {os.path.exists('data.db')}")
     jobs = db.get_pending_jobs()
+    print(f">>> get_pending_jobs() returned {len(jobs)} jobs")
+    if jobs:
+        print(f">>> First job: #{jobs[0].id} {jobs[0].url[:80]}")
     for job in jobs:
         await run_one_job(job.id, job.url, db, config, llm_pool, browser_manager)
         await asyncio.sleep(5)  # Human-like delay between jobs
