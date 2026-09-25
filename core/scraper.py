@@ -44,7 +44,7 @@ async def scrape_linkedin(target_roles: list[str], target_locations: list[str]) 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
         for role in target_roles:
             loc = target_locations[0] if target_locations else ""
-            url = f"https://www.linkedin.com/jobs/search/?keywords={role.replace(' ', '%20')}&location={loc.replace(' ', '%20')}"
+            url = f"https://www.linkedin.com/jobs/search/?keywords={role.replace(' ', '%20')}&location={loc.replace(' ', '%20')}&f_AL=true"
             try:
                 resp = await client.get(url)
                 soup = BeautifulSoup(resp.text, "html.parser")
