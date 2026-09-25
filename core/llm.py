@@ -41,7 +41,6 @@ class GroqPool:
             )
             return json.loads(response.choices[0].message.content)
         except Exception:
-            # Fallback model attempt if primary model name is deprecated
             try:
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
@@ -52,3 +51,9 @@ class GroqPool:
                 return json.loads(response.choices[0].message.content)
             except Exception:
                 return {}
+
+
+async def map_fields_batch(fields: list[dict], profile: dict, pool: GroqPool = None) -> dict:
+    if pool:
+        return await pool.map_fields_batch(fields, str(profile))
+    return {}
