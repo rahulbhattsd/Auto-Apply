@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     stuck_reason TEXT,
     resume_path TEXT,
     screenshot_path TEXT,
+    attempts INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     applied_at TIMESTAMP
 );
@@ -55,6 +56,11 @@ def init_db(db_path: str = DB_PATH) -> None:
             conn.executescript(SCHEMA)
             try:
                 conn.execute("ALTER TABLE jobs ADD COLUMN url TEXT")
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN attempts INTEGER DEFAULT 0")
                 conn.commit()
             except Exception:
                 pass
@@ -227,11 +233,25 @@ class Database:
         con.row_factory = sqlite3.Row
         try:
             cur = con.cursor()
-            cur.execute("SELECT * FROM jobs WHERE status IN ('pending','queued') ORDER BY id")
+            cur.execute("""
+                SELECT * FROM jobs
+                WHERE status IN ('pending','queued')
+                  AND COALESCE(attempts, 0) < 3
+                ORDER BY id
+            """)
             rows = cur.fetchall()
         finally:
             con.close()
         return [JobObject(dict(r)) for r in rows]
+
+    def increment_attempts(self, job_id: int):
+        import sqlite3
+        con = sqlite3.connect(self.db_path)
+        try:
+            con.execute("UPDATE jobs SET attempts = COALESCE(attempts, 0) + 1 WHERE id = ?", (job_id,))
+            con.commit()
+        finally:
+            con.close()
 
     def update_job_status(self, job_id: int, status: str, stuck_reason: str = None):
         update_job_status(job_id, status, stuck_reason=stuck_reason, db_path=self.db_path)
