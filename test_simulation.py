@@ -290,6 +290,12 @@ async def run_simulation():
     assert len(skipped_jobs) == 3, f"Expected 3 skipped external jobs, got {len(skipped_jobs)}"
     assert len(failed_jobs) == 0, f"Expected 0 failed jobs, got {len(failed_jobs)}"
 
+    # Test attempt counting and pending filtering
+    db_test = Database(db_file)
+    pending_after_first_run = db_test.get_pending_jobs()
+    print(f"Pending jobs after first run: {len(pending_after_first_run)}", flush=True)
+    assert len(pending_after_first_run) == 0, f"Expected 0 pending jobs after first run, got {len(pending_after_first_run)}"
+
     print("\n✅ Simulation Passed Successfully! All 15 Easy Apply jobs applied and 3 external jobs skipped.", flush=True)
 
 

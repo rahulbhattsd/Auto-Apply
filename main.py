@@ -15,22 +15,27 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
     if "linkedin.com" in job_url or True:  # Default handler
         handler = LinkedInHandler(page, llm_pool, resume_text, profile)
 
+    db.increment_attempts(job_id)
+
     try:
         result = await handler.apply(job_url)
         status = result.get("status", "failed")
         reason = result.get("reason")
 
-        db.update_job_status(job_id, status, reason)
-
         if status in ("applied", "success"):
+            db.update_job_status(job_id, "applied", reason)
             print(f"[✓] Job #{job_id} successfully applied.")
         elif status in ("skipped_external", "skipped"):
+            db.update_job_status(job_id, "skipped_external", reason)
             print(f"[⏭] Job #{job_id} skipped: {reason}")
         elif status == "stuck":
+            db.update_job_status(job_id, "stuck", reason)
             print(f"[⏸] Job #{job_id} stuck: {reason}")
         elif status == "blocked":
+            db.update_job_status(job_id, "blocked", reason)
             print(f"[🛑] Job #{job_id} blocked: {reason}")
         else:
+            db.update_job_status(job_id, "failed", reason)
             # Capture screenshot and HTML for debugging on true failures
             os.makedirs("./debug", exist_ok=True)
             screenshot_path = f"./debug/job_{job_id}_failed.png"

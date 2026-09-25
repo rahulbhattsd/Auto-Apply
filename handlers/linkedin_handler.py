@@ -25,21 +25,32 @@ class LinkedInHandler:
         return {}
 
     async def detect_easy_apply_button(self):
-        """Finds Easy Apply button across various possible selectors and roles."""
+        """Finds Easy Apply button across various possible selectors, aria-labels, and data attributes."""
         selectors = [
-            'button:has-text("Easy Apply")',
-            'a:has-text("Easy Apply")',
-            '[role="button"]:has-text("Easy Apply")',
             'button[aria-label*="Easy Apply"]',
+            'button[aria-label*="LinkedIn Apply"]',
+            'button[aria-label*="easy apply"]',
+            '[role="button"][aria-label*="Easy Apply"]',
             'a[aria-label*="Easy Apply"]',
+            '[data-easy-apply-next-button]',
+            '[data-control-name="jobdetails_topcard_inapply"]',
             '[data-control-name*="easy_apply"]',
             'button.jobs-apply-button',
+            '.jobs-apply-button',
+            'button:has-text("Easy Apply")',
+            'button:has-text("LinkedIn Apply")',
+            'a:has-text("Easy Apply")',
+            '[role="button"]:has-text("Easy Apply")',
         ]
         for sel in selectors:
             try:
                 loc = self.page.locator(sel).first
-                if await loc.count() > 0 and await loc.is_visible():
-                    return loc
+                if await loc.count() > 0:
+                    try:
+                        if await loc.is_visible():
+                            return loc
+                    except Exception:
+                        continue
             except Exception:
                 continue
         return None
@@ -47,16 +58,21 @@ class LinkedInHandler:
     async def detect_external_apply_button(self):
         """Finds external apply links/buttons."""
         selectors = [
-            'a:has-text("Apply")',
-            'button:has-text("Apply")',
             'a[aria-label*="Apply on"]',
             'a[data-control-name*="apply"]',
+            'a[href*="apply"]:visible',
+            'a:has-text("Apply")',
+            'button:has-text("Apply")',
         ]
         for sel in selectors:
             try:
                 loc = self.page.locator(sel).first
-                if await loc.count() > 0 and await loc.is_visible():
-                    return loc
+                if await loc.count() > 0:
+                    try:
+                        if await loc.is_visible():
+                            return loc
+                    except Exception:
+                        continue
             except Exception:
                 continue
         return None
@@ -68,6 +84,7 @@ class LinkedInHandler:
         """
         dom_modal_selectors = [
             'div[role="dialog"]',
+            '[role="dialog"]',
             '.artdeco-modal',
             '.jobs-easy-apply-modal',
             '[data-test-modal]',
@@ -84,7 +101,9 @@ class LinkedInHandler:
         iframe_selectors = [
             'iframe[title*="Easy Apply"]',
             'iframe[src*="easy-apply"]',
+            'iframe[src*="/apply"]',
             'iframe[title*="Apply"]',
+            'iframe[data-test-modal]',
             'iframe',
         ]
         for sel in iframe_selectors:
@@ -428,6 +447,35 @@ class LinkedInHandler:
 
     async def _click_next_or_submit(self, root: Locator) -> bool:
         """Attempts to click step progression buttons in order of priority."""
+        button_selectors = [
+            'button[aria-label="Submit application"]',
+            'button[aria-label*="Submit application"]',
+            'button[aria-label="Continue to next step"]',
+            'button[aria-label="Review your application"]',
+            'button[aria-label*="Submit"]',
+            'button[aria-label*="Next"]',
+            'button[aria-label*="Review"]',
+            'button[aria-label*="Continue"]',
+            'button:has-text("Submit application")',
+            'button:has-text("Review")',
+            'button:has-text("Next")',
+            'button:has-text("Continue")',
+            'footer button[type="submit"]',
+            'button[type="submit"]',
+        ]
+        for sel in button_selectors:
+            try:
+                btn = root.locator(sel).first
+                if await btn.count() > 0:
+                    try:
+                        if await btn.is_visible() and await btn.is_enabled():
+                            await btn.click()
+                            return True
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+
         button_names = [
             "Submit application",
             "Submit",
@@ -439,10 +487,7 @@ class LinkedInHandler:
         for name in button_names:
             try:
                 btn = root.get_by_role("button", name=re.compile(rf"^{name}$", re.I)).first
-                if await btn.count() == 0 or not await btn.is_visible():
-                    btn = root.locator(f'button:has-text("{name}")').first
-
-                if await btn.count() > 0 and await btn.is_visible():
+                if await btn.count() > 0 and await btn.is_visible() and await btn.is_enabled():
                     await btn.click()
                     return True
             except Exception:
