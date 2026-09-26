@@ -8,6 +8,10 @@ class LeverHandler(ATSHandler):
 
     async def apply(self) -> dict:
         try:
+            try:
+                await self.page.goto(self.job.get("url", ""), wait_until="domcontentloaded", timeout=30000)
+            except Exception as e:
+                return {"status": "failed", "reason": f"Navigation failed: {e}"}
             if await self.page.query_selector(
                 "input[type=password], form[action*=login], form[action*=signin]"
             ):

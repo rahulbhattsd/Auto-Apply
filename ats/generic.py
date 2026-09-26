@@ -6,6 +6,11 @@ from ats.base import ATSHandler
 class GenericHandler(ATSHandler):
     async def apply(self) -> dict:
         try:
+            try:
+                await self.page.goto(self.job.get("url", ""), wait_until="domcontentloaded", timeout=30000)
+            except Exception as e:
+                return {"status": "failed", "reason": f"Navigation failed: {e}"}
+
             if not self.page.url or self.page.url.startswith("about:"):
                 return {"status": "failed", "reason": "site unreachable"}
 

@@ -5,6 +5,7 @@ import yaml
 from pathlib import Path
 from playwright.async_api import Page, Locator
 from core.llm import GroqPool
+from core.dom_utils import step_signature
 
 
 class LinkedInHandler:
@@ -156,9 +157,14 @@ class LinkedInHandler:
 
         root = container_info["root"] if container_info else self.page.locator("body")
 
-        # 5. Process multi-step application form
+        # 5. Process multi-step application form (explicit stuck-loop guard:
+        # if the visible step's field signature repeats two iterations in a
+        # row, "Next" clicked but nothing moved - almost always a silent
+        # validation error - so stop instead of burning all 15 steps).
         max_steps = 15
         submitted = False
+        prev_sig = None
+        stagnant_count = 0
 
         for step in range(max_steps):
             await asyncio.sleep(0.3)
@@ -166,6 +172,15 @@ class LinkedInHandler:
             # Check if submission is already confirmed
             if await self._verify_submission_confirmed(root):
                 submitted = True
+                break
+
+            sig = await step_signature(root)
+            if sig == prev_sig:
+                stagnant_count += 1
+            else:
+                stagnant_count = 0
+            prev_sig = sig
+            if stagnant_count >= 2:
                 break
 
             # Fill form fields in current step container
@@ -313,9 +328,18 @@ class LinkedInHandler:
             pass
 
     async def _fill_text_inputs(self, root: Locator):
+        """
+        Fills every empty text-like input in the current step. Deterministic
+        answers (name/email/experience/etc.) are resolved locally at zero
+        token cost; anything left over is batched into a SINGLE LLM call for
+        the whole step, instead of one call per field (the previous
+        behaviour could burn 5-10 calls per step and was the main token
+        drain in the old flow).
+        """
         try:
             inputs = root.locator('input[type="text"], input[type="number"], input[type="tel"], input:not([type]), textarea')
             cnt = await inputs.count()
+            pending_elements, pending_fields = [], []
             for i in range(cnt):
                 inp = inputs.nth(i)
                 try:
@@ -327,16 +351,23 @@ class LinkedInHandler:
 
                     label = await self._get_field_label(inp)
                     val = self._resolve_profile_answer(label)
-
-                    if not val and self.llm_pool and label:
-                        fields_desc = [{"accessible_name": label, "type": "text"}]
-                        mapping = await self.llm_pool.map_fields_batch(fields_desc, self.resume_text)
-                        val = mapping.get(label, "")
-
                     if val:
                         await inp.fill(str(val))
+                    elif label:
+                        pending_elements.append(inp)
+                        pending_fields.append({"accessible_name": label, "type": "text"})
                 except Exception:
                     continue
+
+            if pending_fields and self.llm_pool:
+                mapping = await self.llm_pool.map_fields_batch(pending_fields, self.profile or self.resume_text)
+                for inp, field in zip(pending_elements, pending_fields):
+                    val = mapping.get(field["accessible_name"])
+                    if val:
+                        try:
+                            await inp.fill(str(val))
+                        except Exception:
+                            continue
         except Exception:
             pass
 
@@ -511,3 +542,4 @@ class LinkedInHandler:
         except Exception:
             pass
         return False
+

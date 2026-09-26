@@ -1,9 +1,9 @@
-import asyncio
+﻿import asyncio
 import os
 import yaml
 from core.browser_manager import BrowserManager
 from core.llm import GroqPool
-from handlers.linkedin_handler import LinkedInHandler
+from core.router import get_handler
 from core.db import Database
 
 async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm_pool: GroqPool, browser_manager: BrowserManager):
@@ -11,14 +11,22 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
     resume_text = config.get("resume_text", "")
     profile = config.get("profile", {})
 
-    handler = None
-    if "linkedin.com" in job_url or True:  # Default handler
-        handler = LinkedInHandler(page, llm_pool, resume_text, profile)
+    # Route by domain instead of always using the LinkedIn handler - this
+    # is the fix for Indeed/Glassdoor/Greenhouse/Lever/Workday/Ashby/generic
+    # career-page jobs being silently skipped or mishandled.
+    kind, handler_cls = get_handler(job_url)
+    if kind == "self_nav":
+        handler = handler_cls(page, llm_pool, resume_text, profile)
+    else:
+        job_row = db.get_job(job_id) or {}
+        job_dict = {"url": job_url, "company": job_row.get("company", ""), "role": job_row.get("role", "")}
+        resume_dict = {"resume_text": resume_text, "resume_path": profile.get("resume_path", "")}
+        handler = handler_cls(page, job_dict, profile, resume_dict, llm_pool)
 
     db.increment_attempts(job_id)
 
     try:
-        result = await handler.apply(job_url)
+        result = await (handler.apply(job_url) if kind == "self_nav" else handler.apply())
         status = result.get("status", "failed")
         reason = result.get("reason")
 
@@ -73,12 +81,14 @@ async def main():
         config = yaml.safe_load(f)
 
     db = Database()
-    groq_keys = (
-        config.get("groq_api_keys")
-        or config.get("groq", {}).get("keys")
-        or ["dummy_key"]
+    groq_cfg = config.get("groq", {}) or {}
+    groq_keys = config.get("groq_api_keys") or groq_cfg.get("keys") or ["dummy_key"]
+    llm_pool = GroqPool(
+        groq_keys,
+        model=groq_cfg.get("model", "openai/gpt-oss-20b"),
+        fallback_model=groq_cfg.get("fallback_model", "openai/gpt-oss-120b"),
+        cooldown_seconds=groq_cfg.get("cooldown_seconds", 60),
     )
-    llm_pool = GroqPool(groq_keys)
     browser_manager = BrowserManager()
     await browser_manager.start()
 

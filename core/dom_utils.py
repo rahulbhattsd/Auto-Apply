@@ -1,5 +1,34 @@
+import hashlib
 import json
 from playwright.async_api import Page, Locator
+
+
+async def step_signature(root) -> str:
+    """
+    Cheap fingerprint of the currently-visible step: which field labels are
+    present and whether each still looks empty. Used for stuck-loop
+    detection in multi-step apply flows (LinkedIn/Indeed) - if two
+    consecutive iterations produce the identical signature, clicking
+    "Next" didn't actually advance the form (e.g. a silent validation
+    error), so the flow should stop retrying instead of burning the
+    remaining step budget.
+    """
+    try:
+        text = await root.evaluate(
+            """(el) => {
+                const nodes = el.querySelectorAll(
+                    'input:not([type=hidden]), select, textarea, [role="combobox"]'
+                );
+                return Array.from(nodes).map(n => {
+                    const label = n.getAttribute('aria-label') || n.name || n.id || '';
+                    const filled = !!(n.value && n.value.trim());
+                    return label + ':' + (filled ? '1' : '0');
+                }).join('|');
+            }"""
+        )
+    except Exception:
+        text = ""
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 async def extract_all_form_fields(page) -> list[dict]:
     """
