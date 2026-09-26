@@ -10,10 +10,16 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from core import db
 
 
+import os
+
 def load_token(config_path: str = "config.yaml") -> str:
-    with open(config_path, encoding="utf-8-sig") as f:
-        cfg = yaml.safe_load(f)
-    return cfg["telegram"]["token"]
+    if not os.path.exists(config_path) and os.path.exists("config.example.yaml"):
+        config_path = "config.example.yaml"
+    if os.path.exists(config_path):
+        with open(config_path, encoding="utf-8-sig") as f:
+            cfg = yaml.safe_load(f) or {}
+        return cfg.get("telegram", {}).get("token", "")
+    return ""
 
 
 def _parse_id(text: str, prefix: str) -> int | None:

@@ -10,8 +10,13 @@ STATE_FILE = "state.json"
 
 class BrowserManager:
     def __init__(self, config_path="config.yaml"):
-        with open(config_path, "r") as f:
-            self.config = yaml.safe_load(f)
+        if not os.path.exists(config_path) and os.path.exists("config.example.yaml"):
+            config_path = "config.example.yaml"
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8-sig") as f:
+                self.config = yaml.safe_load(f) or {}
+        else:
+            self.config = {}
         self.playwright = None
         self.browser = None
         self.context = None
@@ -20,24 +25,28 @@ class BrowserManager:
     async def start(self):
         self.playwright = await async_playwright().start()
 
+        headless = self.config.get("settings", {}).get("headless", True)
+
         launch_args = [
             "--disable-blink-features=AutomationControlled",
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-infobars",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
         ]
 
         try:
             self.browser = await self.playwright.chromium.launch(
                 channel="chrome",
-                headless=False,
+                headless=headless,
                 args=launch_args,
             )
-            print("[OK] Launched REAL Chrome (minimal stealth)")
+            print(f"[OK] Launched REAL Chrome (minimal stealth, headless={headless})")
         except Exception as e:
             print(f"[!] Real Chrome unavailable ({e}), using bundled Chromium")
             self.browser = await self.playwright.chromium.launch(
-                headless=False,
+                headless=headless,
                 args=launch_args,
             )
 
