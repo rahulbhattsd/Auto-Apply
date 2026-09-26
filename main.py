@@ -1,6 +1,7 @@
 ﻿import asyncio
 import os
 import yaml
+from check_setup import check_setup
 from core.browser_manager import BrowserManager
 from core.llm import GroqPool
 from core.router import get_handler
@@ -83,6 +84,7 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
         return {"status": "failed", "reason": str(e)}
 
 async def main():
+    check_setup()
     config_path = "config.yaml"
     if not os.path.exists(config_path):
         config_path = "config.example.yaml"
