@@ -1,13 +1,25 @@
 """ats/base.py — Abstract base; concrete handlers only implement apply()."""
 
 from abc import ABC, abstractmethod
+from pathlib import Path
+import yaml
 from barriers.captcha import detect_captcha
 from core.llm import map_fields_batch
+
+def _load_profile() -> dict:
+    profile_path = Path("profile.yaml")
+    if profile_path.exists():
+        try:
+            with open(profile_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            pass
+    return {}
 
 def _get(obj: dict, path: str) -> str:
     for key in path.split("."):
         if not isinstance(obj, dict):
-            return ""
+            return str(obj) if obj is not None else ""
         obj = obj.get(key)
         if obj is None:
             return ""
@@ -26,7 +38,11 @@ class ATSHandler(ABC):
     FILE_INPUT_SELECTOR = "input[type=file]"
 
     def __init__(self, page, job: dict, profile: dict, resume: dict, pool=None):
-        self.page, self.job, self.profile, self.resume, self.pool = page, job, profile, resume, pool
+        self.page = page
+        self.job = job
+        self.profile = profile or _load_profile()
+        self.resume = resume
+        self.pool = pool
 
     @abstractmethod
     async def apply(self) -> dict:

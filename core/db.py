@@ -43,15 +43,14 @@ CREATE TABLE IF NOT EXISTS stats (
 """
 
 
+_INITIALIZED_DBS = set()
+
 def get_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
-    return conn
-
-
-def init_db(db_path: str = DB_PATH) -> None:
-    with closing(get_connection(db_path)) as conn:
+    if db_path not in _INITIALIZED_DBS:
+        _INITIALIZED_DBS.add(db_path)
         with conn:
             conn.executescript(SCHEMA)
             try:
@@ -64,6 +63,11 @@ def init_db(db_path: str = DB_PATH) -> None:
                 conn.commit()
             except Exception:
                 pass
+    return conn
+
+
+def init_db(db_path: str = DB_PATH) -> None:
+    get_connection(db_path)
 
 
 def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:

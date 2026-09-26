@@ -6,10 +6,20 @@ from core.llm import GroqPool
 from core.router import get_handler
 from core.db import Database
 
+def load_profile(config: dict) -> dict:
+    profile = config.get("profile", {}) or {}
+    if not profile and os.path.exists("profile.yaml"):
+        try:
+            with open("profile.yaml", "r", encoding="utf-8") as f:
+                profile = yaml.safe_load(f) or {}
+        except Exception:
+            profile = {}
+    return profile
+
 async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm_pool: GroqPool, browser_manager: BrowserManager):
     page = browser_manager.page
     resume_text = config.get("resume_text", "")
-    profile = config.get("profile", {})
+    profile = load_profile(config)
 
     # Route by domain instead of always using the LinkedIn handler - this
     # is the fix for Indeed/Glassdoor/Greenhouse/Lever/Workday/Ashby/generic
