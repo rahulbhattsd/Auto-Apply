@@ -76,8 +76,11 @@ def get_job_id_by_hash(jd_hash: str, db_path: str = DB_PATH) -> int | None:
         return row["id"] if row else None
 
 
-def insert_job(company: str, role: str, url: str, jd_text: str = "", jd_hash: str = "",
+def insert_job(company: str, role: str, url: str, jd_text: str = "", jd_hash: str = None,
                db_path: str = DB_PATH) -> int | None:
+    if not jd_hash and url:
+        import hashlib
+        jd_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
     with closing(get_connection(db_path)) as conn:
         with conn:
             cur = conn.execute(
@@ -260,7 +263,7 @@ class Database:
     def update_job_status(self, job_id: int, status: str, stuck_reason: str = None):
         update_job_status(job_id, status, stuck_reason=stuck_reason, db_path=self.db_path)
 
-    def insert_job(self, company: str, role: str, url: str, jd_text: str = "", jd_hash: str = ""):
+    def insert_job(self, company: str, role: str, url: str, jd_text: str = "", jd_hash: str = None):
         return insert_job(company, role, url, jd_text, jd_hash, db_path=self.db_path)
 
     def get_job(self, job_id: int):

@@ -12,6 +12,8 @@ venv/
 
 # Databases
 *.db
+*.db-shm
+*.db-wal
 cache.db
 data.db
 

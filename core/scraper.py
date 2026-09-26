@@ -108,3 +108,6 @@ async def scrape_jobs(profile: dict, target_count: int = 50) -> list[dict]:
             if len(results) >= target_count:
                 break
     return results[:target_count]
+
+
+scrape_all = scrape_jobs

@@ -52,6 +52,9 @@ python bot.py
 
 # Terminal 3 — the dashboard
 uvicorn dashboard:app --reload --port 8000
+
+# Terminal 4 — job scraper & queue filler
+python scrape_and_queue.py
 ```
 
 Then open http://localhost:8000 to watch progress, and use your Telegram
