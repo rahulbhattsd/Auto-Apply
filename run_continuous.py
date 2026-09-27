@@ -59,6 +59,9 @@ async def main():
         config = yaml.safe_load(f)
     profile = load_profile(config)
 
+    print(f"[debug] profile.yaml keys loaded: {list(profile.keys())}")
+    print(f"[debug] target_roles found: {len(profile.get('job_search', {}).get('target_roles', []))}")
+
     db = Database()
     groq_cfg = config.get("groq", {}) or {}
     groq_keys = config.get("groq_api_keys") or groq_cfg.get("keys") or ["dummy_key"]
