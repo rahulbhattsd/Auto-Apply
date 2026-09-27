@@ -1,4 +1,4 @@
-"""run_continuous.py — Scrape until target discovered jobs count reached, auto-apply until target applications daily limit reached."""
+"""run_continuous.py — Scrape continuously, apply until target limit reached (resets every 12h window)."""
 
 import asyncio
 import os
@@ -13,7 +13,6 @@ from core.scraper import scrape_jobs
 from main import run_one_job, load_profile
 from check_setup import check_setup
 
-TARGET_DISCOVERED = 150
 TARGET_APPLIED = 50
 SCRAPE_BATCH = 50
 POLL_SLEEP_SECS = 60
@@ -30,18 +29,16 @@ def total_discovered(db_path: str = DB_PATH) -> int:
 def applied_today(db_path: str = DB_PATH) -> int:
     con = sqlite3.connect(db_path)
     row = con.execute(
-        "SELECT applied FROM stats WHERE date = ?", (date.today().isoformat(),)
+        "SELECT COUNT(*) FROM jobs WHERE status = 'applied' AND applied_at >= datetime('now', '-12 hours')"
     ).fetchone()
+    cnt_12h = row[0] if row else 0
     con.close()
-    return row[0] if row else 0
+    return cnt_12h
 
 
 async def top_up_jobs(profile: dict, db_path: str = DB_PATH) -> int:
-    need = TARGET_DISCOVERED - total_discovered(db_path)
-    if need <= 0:
-        return 0
-    print(f"[scraper] {need} more jobs needed to hit {TARGET_DISCOVERED} target, scraping...")
-    jobs = await scrape_jobs(profile, target_count=min(SCRAPE_BATCH, need))
+    print(f"[scraper] queue empty, scraping up to {SCRAPE_BATCH} more jobs...")
+    jobs = await scrape_jobs(profile, target_count=SCRAPE_BATCH)
     added = 0
     for j in jobs:
         if not j.get("url"):
@@ -78,24 +75,25 @@ async def main():
     try:
         while True:
             done_today = applied_today()
-            print(f"[status] discovered={total_discovered()}/{TARGET_DISCOVERED}  applied_today={done_today}/{TARGET_APPLIED}")
+            print(f"[status] discovered={total_discovered()}  applied_today={done_today}/{TARGET_APPLIED}")
             if done_today >= TARGET_APPLIED:
-                print("[done] Target of", TARGET_APPLIED, "applications reached for today. Stopping.")
+                print("[done] Target of", TARGET_APPLIED, "applications reached for current 12h window. Stopping.")
                 break
-
-            await top_up_jobs(profile)
 
             jobs = db.get_pending_jobs()
             if not jobs:
-                idle_cycles += 1
-                if total_discovered() >= TARGET_DISCOVERED and idle_cycles >= MAX_IDLE_CYCLES:
-                    print("[done] Discovered", TARGET_DISCOVERED, "jobs and queue is exhausted; stopping.")
-                    break
-                print(f"[idle] No jobs to process right now, sleeping {POLL_SLEEP_SECS}s...")
-                await asyncio.sleep(POLL_SLEEP_SECS)
-                continue
+                added = await top_up_jobs(profile)
+                if added == 0:
+                    idle_cycles += 1
+                    if idle_cycles >= MAX_IDLE_CYCLES:
+                        print("[done] Saare roles/sources try kar liye, koi naya job nahi mil raha. Stopping.")
+                        break
+                    print(f"[idle] Is baar kuch naya nahi mila, {POLL_SLEEP_SECS}s sleep karke phir try karenge...")
+                    await asyncio.sleep(POLL_SLEEP_SECS)
+                    continue
+                idle_cycles = 0
+                jobs = db.get_pending_jobs()
 
-            idle_cycles = 0
             for job in jobs:
                 if applied_today() >= TARGET_APPLIED:
                     break

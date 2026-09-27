@@ -2,7 +2,7 @@ import os
 import sqlite3
 import pytest
 from core.db import Database, insert_job, update_job_status
-from run_continuous import total_discovered, applied_today
+from run_continuous import total_discovered, applied_today, top_up_jobs
 
 
 @pytest.fixture
@@ -46,3 +46,28 @@ def test_run_continuous_helpers(test_db):
     update_job_status(j1_id, "applied", db_path=db_file)
 
     assert applied_today(db_path=db_file) == 1
+
+
+@pytest.mark.asyncio
+async def test_top_up_jobs_no_discovery_ceiling(test_db, monkeypatch):
+    db_file, db = test_db
+
+    # Pre-populate DB with 150 jobs
+    for i in range(150):
+        insert_job(f"Company_{i}", f"Role_{i}", f"https://example.com/job_{i}", db_path=db_file)
+
+    assert total_discovered(db_path=db_file) == 150
+
+    mock_scraped = [
+        {"company": "NewCo1", "role": "Dev", "url": "https://example.com/newjob1"},
+        {"company": "NewCo2", "role": "Dev", "url": "https://example.com/newjob2"},
+    ]
+
+    async def mock_scrape_jobs(profile, target_count=50):
+        return mock_scraped
+
+    monkeypatch.setattr("run_continuous.scrape_jobs", mock_scrape_jobs)
+
+    added = await top_up_jobs({}, db_path=db_file)
+    assert added == 2
+    assert total_discovered(db_path=db_file) == 152
