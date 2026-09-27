@@ -227,6 +227,21 @@ class JobObject:
         self.company = row.get("company", "")
         self.role = row.get("role", "")
         self.status = row.get("status", "")
+        self.attempts = row.get("attempts", 0)
+
+
+# Statuses we should keep retrying (until MAX_ATTEMPTS reached)
+RETRYABLE_STATUSES = (
+    "pending",
+    "queued",
+    "failed",
+    "skipped_external",
+    "stuck",
+    "blocked",
+)
+
+# Max attempts per job before giving up
+MAX_ATTEMPTS = 3
 
 
 class Database:
@@ -235,27 +250,38 @@ class Database:
         init_db(self.db_path)
 
     def get_pending_jobs(self) -> list[JobObject]:
-        import sqlite3
+        """Return all jobs that still need applying.
+
+        Includes fresh jobs (pending/queued) AND retryable ones
+        (failed/skipped_external/stuck/blocked) as long as they haven't
+        exceeded MAX_ATTEMPTS. Jobs already 'applied' are never returned.
+        """
         con = sqlite3.connect(self.db_path)
         con.row_factory = sqlite3.Row
         try:
+            placeholders = ",".join(["?"] * len(RETRYABLE_STATUSES))
             cur = con.cursor()
-            cur.execute("""
+            cur.execute(
+                f"""
                 SELECT * FROM jobs
-                WHERE status IN ('pending','queued')
-                  AND COALESCE(attempts, 0) < 3
+                WHERE status IN ({placeholders})
+                  AND COALESCE(attempts, 0) < ?
                 ORDER BY id
-            """)
+                """,
+                (*RETRYABLE_STATUSES, MAX_ATTEMPTS),
+            )
             rows = cur.fetchall()
         finally:
             con.close()
         return [JobObject(dict(r)) for r in rows]
 
     def increment_attempts(self, job_id: int):
-        import sqlite3
         con = sqlite3.connect(self.db_path)
         try:
-            con.execute("UPDATE jobs SET attempts = COALESCE(attempts, 0) + 1 WHERE id = ?", (job_id,))
+            con.execute(
+                "UPDATE jobs SET attempts = COALESCE(attempts, 0) + 1 WHERE id = ?",
+                (job_id,),
+            )
             con.commit()
         finally:
             con.close()
