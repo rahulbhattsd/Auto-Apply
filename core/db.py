@@ -235,7 +235,6 @@ RETRYABLE_STATUSES = (
     "pending",
     "queued",
     "failed",
-    "skipped_external",
     "stuck",
     "blocked",
 )
