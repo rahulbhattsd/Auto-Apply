@@ -96,11 +96,16 @@ async def scrape_jobs(profile: dict, target_count: int = 50) -> list[dict]:
     roles = js.get("target_roles", [])
     locations = js.get("target_locations", [])
 
+    if not roles:
+        print("[scraper] WARNING: profile.yaml me job_search.target_roles set nahi hai — kuch search hi nahi ho raha!")
+
     seen_urls, results = set(), []
     for source_fn in (scrape_naukri, scrape_linkedin, scrape_indeed):
         if len(results) >= target_count:
             break
-        for job in await source_fn(roles, locations):
+        source_jobs = await source_fn(roles, locations)
+        print(f"[scraper] {source_fn.__name__}: {len(source_jobs)} raw listings mile")
+        for job in source_jobs:
             if job["url"] in seen_urls:
                 continue
             seen_urls.add(job["url"])
