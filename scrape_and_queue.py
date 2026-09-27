@@ -5,6 +5,7 @@ import os
 import time
 import schedule
 import yaml
+from check_setup import check_setup
 from core.scraper import scrape_jobs
 from core.db import insert_job, init_db
 
@@ -61,6 +62,7 @@ def run_once():
 
 
 def main():
+    check_setup()
     schedule.every(30).minutes.do(run_once)
     run_once()  # first run immediately
     while True:
