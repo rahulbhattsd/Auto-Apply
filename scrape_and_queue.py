@@ -24,14 +24,15 @@ def load_config() -> dict:
 
 
 def load_profile(config: dict) -> dict:
-    profile = config.get("profile", {}) or {}
-    if not profile and os.path.exists("profile.yaml"):
+    if os.path.exists("profile.yaml"):
         try:
             with open("profile.yaml", "r", encoding="utf-8") as f:
-                profile = yaml.safe_load(f) or {}
+                file_profile = yaml.safe_load(f) or {}
+            if file_profile:
+                return file_profile
         except Exception:
             pass
-    return profile
+    return config.get("profile", {}) or {}
 
 
 def run_once():

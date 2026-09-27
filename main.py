@@ -8,14 +8,15 @@ from core.router import get_handler
 from core.db import Database
 
 def load_profile(config: dict) -> dict:
-    profile = config.get("profile", {}) or {}
-    if not profile and os.path.exists("profile.yaml"):
+    if os.path.exists("profile.yaml"):
         try:
             with open("profile.yaml", "r", encoding="utf-8") as f:
-                profile = yaml.safe_load(f) or {}
+                file_profile = yaml.safe_load(f) or {}
+            if file_profile:
+                return file_profile
         except Exception:
-            profile = {}
-    return profile
+            pass
+    return config.get("profile", {}) or {}
 
 async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm_pool: GroqPool, browser_manager: BrowserManager):
     page = browser_manager.page
