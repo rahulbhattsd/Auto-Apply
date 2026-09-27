@@ -36,8 +36,8 @@ async def main():
     groq_keys = config.get("groq_api_keys") or groq_cfg.get("keys") or ["dummy_key"]
     llm_pool = GroqPool(
         groq_keys,
-        model=groq_cfg.get("model", "llama-3.1-8b-instant"),
-        fallback_model=groq_cfg.get("fallback_model", "llama3-8b-8192"),
+        model=groq_cfg.get("model", "openai/gpt-oss-20b"),
+        fallback_model=groq_cfg.get("fallback_model", "openai/gpt-oss-120b"),
     )
 
     # Load profile
