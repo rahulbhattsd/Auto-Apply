@@ -4,7 +4,68 @@ check_setup.py — Preflight verification for runtime configuration, files, and 
 
 import os
 import sys
+from pathlib import Path
 import yaml
+
+
+def get_playwright_browsers_path() -> Path:
+    """Return the platform-specific Playwright browser cache directory."""
+    env_path = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if env_path:
+        if env_path == "0":
+            return Path.cwd()
+        return Path(env_path)
+
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(base) / "ms-playwright"
+
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Caches" / "ms-playwright"
+
+    return Path.home() / ".cache" / "ms-playwright"
+
+
+def is_chromium_installed() -> bool:
+    """
+    Check if a Playwright Chromium build exists without launching it.
+    Avoids sync/async Playwright API conflicts when called from an asyncio loop.
+    """
+    browsers_dir = get_playwright_browsers_path()
+    if not browsers_dir.exists():
+        return False
+
+    try:
+        for entry in browsers_dir.iterdir():
+            if not entry.is_dir():
+                continue
+            name = entry.name.lower()
+            if not (name.startswith("chromium-") or name.startswith("chromium_headless_shell-")):
+                continue
+
+            if sys.platform == "win32":
+                candidates = [
+                    entry / "chrome-win" / "chrome.exe",
+                    entry / "chrome-win64" / "chrome.exe",
+                    entry / "chrome.exe",
+                ]
+            elif sys.platform == "darwin":
+                candidates = [
+                    entry / "chrome-mac" / "Chromium.app" / "Contents" / "MacOS" / "Chromium",
+                    entry / "chrome-mac" / "chrome",
+                ]
+            else:
+                candidates = [
+                    entry / "chrome-linux" / "chrome",
+                ]
+
+            for cand in candidates:
+                if cand.exists():
+                    return True
+    except Exception:
+        pass
+
+    return False
 
 
 def check_setup(exit_on_failure: bool = True) -> list[str]:
@@ -18,18 +79,9 @@ def check_setup(exit_on_failure: bool = True) -> list[str]:
     errors = []
 
     # 1. Check Playwright Chromium browser installation
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            exec_path = p.chromium.executable_path
-            if not exec_path or not os.path.exists(exec_path):
-                errors.append(
-                    "Playwright Chromium browser binary is not installed.\n"
-                    "  -> Run: playwright install chromium"
-                )
-    except Exception as e:
+    if not is_chromium_installed():
         errors.append(
-            f"Failed to check Playwright Chromium installation ({e}).\n"
+            "Playwright Chromium browser binary is not installed.\n"
             "  -> Run: playwright install chromium"
         )
 
