@@ -55,6 +55,51 @@ class TestScrapeAndQueue(unittest.TestCase):
         mock_scrape_jobs.assert_called_once()
         self.assertEqual(mock_insert_job.call_count, 2)
 
+    def test_load_profile_prioritizes_profile_yaml(self):
+        import main
+        import scrape_and_queue
+        import tempfile
+
+        config_stub = {"profile": {"personal": {"first_name": "StubUser"}}}
+        yaml_data = "personal:\n  first_name: FileUser\njob_search:\n  target_roles:\n    - Engineer\n"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with open("profile.yaml", "w", encoding="utf-8") as f:
+                    f.write(yaml_data)
+
+                p1 = scrape_and_queue.load_profile(config_stub)
+                p2 = main.load_profile(config_stub)
+
+                self.assertEqual(p1.get("personal", {}).get("first_name"), "FileUser")
+                self.assertEqual(p2.get("personal", {}).get("first_name"), "FileUser")
+                self.assertIn("Engineer", p1.get("job_search", {}).get("target_roles", []))
+            finally:
+                os.chdir(old_cwd)
+
+    def test_load_profile_fallback_to_config(self):
+        import main
+        import scrape_and_queue
+        import tempfile
+
+        config_stub = {"profile": {"personal": {"first_name": "StubUser"}}}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                # No profile.yaml in this directory
+
+                p1 = scrape_and_queue.load_profile(config_stub)
+                p2 = main.load_profile(config_stub)
+
+                self.assertEqual(p1, config_stub["profile"])
+                self.assertEqual(p2, config_stub["profile"])
+            finally:
+                os.chdir(old_cwd)
+
 
 if __name__ == "__main__":
     unittest.main()
