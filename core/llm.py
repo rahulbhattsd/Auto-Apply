@@ -25,8 +25,8 @@ from core.cache import get_cached, set_cached
 
 # Current (as of this writing) free-tier Groq model IDs. Keep this list in
 # one place so a future Groq deprecation only needs one edit.
-DEFAULT_MODEL = "openai/gpt-oss-20b"        # cheap + fast, plenty for field-mapping
-FALLBACK_MODEL = "openai/gpt-oss-120b"      # only used if the primary model itself errors
+DEFAULT_MODEL = "openai/gpt-oss-20b"      # confirmed working on this account
+FALLBACK_MODEL = "openai/gpt-oss-120b"   # larger fallback, also confirmed working
 
 
 def _profile_summary(profile: dict, max_chars: int = 500) -> str:
