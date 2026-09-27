@@ -167,21 +167,11 @@ class LinkedInHandler:
         stagnant_count = 0
 
         for step in range(max_steps):
-            await asyncio.sleep(0.3)
-
-            # Check if submission is already confirmed
             if await self._verify_submission_confirmed(root):
                 submitted = True
                 break
 
             sig = await step_signature(root)
-            if sig == prev_sig:
-                stagnant_count += 1
-            else:
-                stagnant_count = 0
-            prev_sig = sig
-            if stagnant_count >= 2:
-                break
 
             # Fill form fields in current step container
             await self._fill_form_step(root)
@@ -193,6 +183,21 @@ class LinkedInHandler:
                     submitted = True
                 break
 
+            # Actively wait for the click's effect instead of a blind sleep —
+            # this is what actually fixes premature "stuck" detection.
+            changed = await self._wait_for_step_change(root, sig, timeout=6.0)
+            if await self._verify_submission_confirmed(root):
+                submitted = True
+                break
+            if not changed:
+                # Genuinely nothing moved after a real wait — now it's a
+                # trustworthy stagnant signal, not a timing artifact.
+                stagnant_count += 1
+                if stagnant_count >= 2:
+                    break
+            else:
+                stagnant_count = 0
+
         # 6. Final verification — ONLY trust an explicit confirmation.
         # A closed modal is NOT proof of submission (it can close from a
         # wrong button click, a validation error, or losing scope) — that
@@ -203,6 +208,26 @@ class LinkedInHandler:
             return {"status": "applied", "reason": None}
 
         return {"status": "stuck", "reason": "Easy Apply flow ended without a confirmed submission — needs manual check"}
+
+    async def _wait_for_step_change(self, root: Locator, prev_sig, timeout: float = 6.0) -> bool:
+        """
+        Actively polls until the step's DOM signature changes (new step loaded)
+        or a confirmation appears, instead of a blind fixed sleep. This is the
+        core fix for premature 'stuck' — LinkedIn's SPA can take 1-3s to render
+        the next step, and a fixed 0.3s sleep was reading the OLD step and
+        wrongly concluding nothing happened.
+        """
+        elapsed = 0.0
+        poll = 0.25
+        while elapsed < timeout:
+            if await self._verify_submission_confirmed(root):
+                return True
+            sig = await step_signature(root)
+            if sig != prev_sig:
+                return True
+            await asyncio.sleep(poll)
+            elapsed += poll
+        return False
 
     async def _fill_form_step(self, root: Locator):
         """Extracts and fills fields present in current step root container."""
@@ -298,7 +323,16 @@ class LinkedInHandler:
         if "disability" in lbl:
             return "No"
 
+        # Common Yes/No questions — resolved locally, never reach LLM
+        if "relocate" in lbl:
+            return "Yes" if self.profile.get("job_search", {}).get("willing_to_relocate", True) else "No"
+        if "background check" in lbl or "drug test" in lbl:
+            return "Yes"
+        if "commut" in lbl:
+            return "Yes"
+
         return ""
+
 
     async def _fill_resume_inputs(self, root: Locator):
         try:
@@ -483,6 +517,10 @@ class LinkedInHandler:
     async def _click_next_or_submit(self, root: Locator) -> bool:
         """Attempts to click step progression buttons in order of priority."""
         button_selectors = [
+            # Language-independent: LinkedIn's Artdeco design system always
+            # marks the primary CTA with this class regardless of UI language.
+            'footer button.artdeco-button--primary:not([disabled])',
+            'button.artdeco-button--primary:not([disabled])',
             'button[aria-label="Submit application"]',
             'button[aria-label*="Submit application"]',
             'button[aria-label="Continue to next step"]',
@@ -530,15 +568,29 @@ class LinkedInHandler:
         return False
 
     async def _verify_submission_confirmed(self, root: Locator) -> bool:
-        """Verifies if application submission confirmation text is present."""
+        """
+        Language-independent first: LinkedIn's success toast/feedback uses a
+        stable structural class regardless of UI language. Falls back to
+        English text phrases as a secondary signal for extra confidence.
+        Never treats a closed modal alone as success — that was the false-
+        positive bug fixed earlier.
+        """
+        structural_selectors = [
+            '.artdeco-toast-item--success',
+            '.artdeco-inline-feedback--success',
+            '[data-test-modal-title="done"]',
+        ]
+        for sel in structural_selectors:
+            try:
+                if await self.page.locator(sel).count() > 0:
+                    return True
+            except Exception:
+                pass
+
         confirmation_phrases = [
-            "application submitted",
-            "your application was sent",
-            "application was submitted",
-            "thank you for applying",
-            "application sent",
-            "your application has been sent",
-            "you applied",
+            "application submitted", "your application was sent",
+            "application was submitted", "thank you for applying",
+            "application sent", "your application has been sent", "you applied",
         ]
         try:
             text = await self.page.evaluate("document.body ? document.body.innerText : ''")

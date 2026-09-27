@@ -35,14 +35,26 @@ def load_profile(config: dict) -> dict:
     return config.get("profile", {}) or {}
 
 
+from core.browser_manager import BrowserManager
+
+
+async def _scrape_with_browser(profile: dict) -> list[dict]:
+    bm = BrowserManager()
+    page = await bm.start()
+    try:
+        return await scrape_jobs(profile, target_count=50, page=page)
+    finally:
+        await bm.close()
+
+
 def run_once():
     init_db()
     config = load_config()
     profile = load_profile(config)
 
-    print("[scraper] Starting job search run...", flush=True)
+    print("[scraper] Starting job search run with Easy Apply filter...", flush=True)
     try:
-        jobs = asyncio.run(scrape_jobs(profile, target_count=50))
+        jobs = asyncio.run(_scrape_with_browser(profile))
     except Exception as e:
         print(f"[scraper] Error during scraping: {e}", flush=True)
         return
@@ -59,7 +71,8 @@ def run_once():
         if inserted_id:
             new_count += 1
 
-    print(f"[scraper] {len(jobs)} scraped, {new_count} new jobs queued", flush=True)
+    print(f"[scraper] {len(jobs)} scraped, {new_count} new Easy Apply jobs queued", flush=True)
+
 
 
 def main():

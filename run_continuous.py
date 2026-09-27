@@ -9,7 +9,7 @@ from datetime import date
 from core.browser_manager import BrowserManager
 from core.llm import GroqPool
 from core.db import Database, DB_PATH, insert_job
-from core.scraper import scrape_jobs
+from core.scraper import scrape_jobs, scrape_linkedin_browser
 from main import run_one_job, load_profile
 from check_setup import check_setup
 
@@ -36,16 +36,16 @@ def applied_today(db_path: str = DB_PATH) -> int:
     return cnt_12h
 
 
-async def top_up_jobs(profile: dict, db_path: str = DB_PATH) -> int:
-    print(f"[scraper] queue empty, scraping up to {SCRAPE_BATCH} more jobs...")
-    jobs = await scrape_jobs(profile, target_count=SCRAPE_BATCH)
+async def top_up_jobs(profile: dict, db_path: str = DB_PATH, page=None) -> int:
+    print(f"[scraper] queue empty, scraping up to {SCRAPE_BATCH} more jobs with Easy Apply filter...")
+    jobs = await scrape_jobs(profile, target_count=SCRAPE_BATCH, page=page)
     added = 0
     for j in jobs:
         if not j.get("url"):
             continue
         if insert_job(j.get("company", "Unknown"), j.get("role", "Unknown"), j["url"], j.get("jd_text", ""), db_path=db_path):
             added += 1
-    print(f"[scraper] {len(jobs)} scraped, {added} new jobs added")
+    print(f"[scraper] {len(jobs)} scraped, {added} new verified Easy Apply jobs added")
     return added
 
 
@@ -82,7 +82,7 @@ async def main():
 
             jobs = db.get_pending_jobs()
             if not jobs:
-                added = await top_up_jobs(profile)
+                added = await top_up_jobs(profile, page=browser_manager.page)
                 if added == 0:
                     idle_cycles += 1
                     if idle_cycles >= MAX_IDLE_CYCLES:
