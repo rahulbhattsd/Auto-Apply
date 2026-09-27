@@ -16,14 +16,17 @@ def clean_jd_text(raw_html: str, max_words: int = 400) -> str:
 
 async def scrape_naukri(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
-        for role in target_roles:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=10, follow_redirects=True) as client:
+        for i, role in enumerate(target_roles, 1):
             loc = target_locations[0] if target_locations else ""
             url = f"https://www.naukri.com/{role.replace(' ', '-').lower()}-jobs-in-{loc.replace(' ', '-').lower()}"
+            print(f"[naukri] ({i}/{len(target_roles)}) trying '{role}'...")
             try:
                 resp = await client.get(url)
                 soup = BeautifulSoup(resp.text, "html.parser")
-                for card in soup.select("article.jobTuple, div.cust-job-tuple"):
+                cards = soup.select("article.jobTuple, div.cust-job-tuple")
+                print(f"[naukri]   -> HTTP {resp.status_code}, {len(cards)} cards")
+                for card in cards:
                     title_el = card.select_one("a.title, a.ellipsis")
                     company_el = card.select_one("a.subTitle, .comp-name")
                     if not title_el:
@@ -35,20 +38,24 @@ async def scrape_naukri(target_roles: list[str], target_locations: list[str]) ->
                         "jd_text": clean_jd_text(card.get_text(separator=" ")),
                     })
             except Exception as e:
+                print(f"[naukri]   -> ERROR: {e}, agle keyword pe ja rahe")
                 logger.warning(f"scrape_naukri failed for {role!r}: {e}")
     return jobs
 
 
 async def scrape_linkedin(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
-        for role in target_roles:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=10, follow_redirects=True) as client:
+        for i, role in enumerate(target_roles, 1):
             loc = target_locations[0] if target_locations else ""
             url = f"https://www.linkedin.com/jobs/search/?keywords={role.replace(' ', '%20')}&location={loc.replace(' ', '%20')}&f_AL=true"
+            print(f"[linkedin] ({i}/{len(target_roles)}) trying '{role}'...")
             try:
                 resp = await client.get(url)
                 soup = BeautifulSoup(resp.text, "html.parser")
-                for card in soup.select("div.base-card"):
+                cards = soup.select("div.base-card")
+                print(f"[linkedin]   -> HTTP {resp.status_code}, {len(cards)} cards")
+                for card in cards:
                     title_el = card.select_one("h3.base-search-card__title")
                     company_el = card.select_one("h4.base-search-card__subtitle")
                     link_el = card.select_one("a.base-card__full-link")
@@ -61,20 +68,24 @@ async def scrape_linkedin(target_roles: list[str], target_locations: list[str]) 
                         "jd_text": clean_jd_text(card.get_text(separator=" ")),
                     })
             except Exception as e:
+                print(f"[linkedin]   -> ERROR: {e}, agle keyword pe ja rahe")
                 logger.warning(f"scrape_linkedin failed for {role!r}: {e}")
     return jobs
 
 
 async def scrape_indeed(target_roles: list[str], target_locations: list[str]) -> list[dict]:
     jobs = []
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
-        for role in target_roles:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=10, follow_redirects=True) as client:
+        for i, role in enumerate(target_roles, 1):
             loc = target_locations[0] if target_locations else ""
             url = f"https://www.indeed.com/jobs?q={role.replace(' ', '+')}&l={loc.replace(' ', '+')}"
+            print(f"[indeed] ({i}/{len(target_roles)}) trying '{role}'...")
             try:
                 resp = await client.get(url)
                 soup = BeautifulSoup(resp.text, "html.parser")
-                for card in soup.select("div.job_seen_beacon"):
+                cards = soup.select("div.job_seen_beacon")
+                print(f"[indeed]   -> HTTP {resp.status_code}, {len(cards)} cards")
+                for card in cards:
                     title_el = card.select_one("h2.jobTitle span")
                     company_el = card.select_one("span.companyName")
                     link_el = card.select_one("a")
@@ -87,6 +98,7 @@ async def scrape_indeed(target_roles: list[str], target_locations: list[str]) ->
                         "jd_text": clean_jd_text(card.get_text(separator=" ")),
                     })
             except Exception as e:
+                print(f"[indeed]   -> ERROR: {e}, agle keyword pe ja rahe")
                 logger.warning(f"scrape_indeed failed for {role!r}: {e}")
     return jobs
 
