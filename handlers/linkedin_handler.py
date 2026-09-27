@@ -276,8 +276,10 @@ class LinkedInHandler:
             return "No" if not work.get("requires_sponsorship", False) else "Yes"
         if "authorized" in lbl or "legally" in lbl:
             return "Yes" if work.get("authorized_to_work", True) else "No"
-        if "experience" in lbl or "years" in lbl:
-            return str(prefs.get("years_of_experience", 3))
+        if "experience" in lbl or "years" in lbl or "yoe" in lbl or "yrs" in lbl or "how long" in lbl:
+            return str(prefs.get("years_of_experience", 4))
+        if "have you" in lbl or "do you have" in lbl:
+            return "Yes"
         if "salary" in lbl or "compensation" in lbl or "ctc" in lbl:
             return str(prefs.get("expected_salary", "1500000"))
         if "notice" in lbl:
@@ -424,6 +426,8 @@ class LinkedInHandler:
                         if answer.lower() in r_lbl.lower():
                             radio_to_click = r_item
                             break
+                        elif "yes" in r_lbl.lower() and (answer.isdigit() or answer.lower() == "yes"):
+                            radio_to_click = r_item
 
                 try:
                     await radio_to_click.click(force=True)

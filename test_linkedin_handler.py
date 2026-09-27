@@ -1,7 +1,24 @@
 import asyncio
 import pytest
+from unittest.mock import MagicMock
 from playwright.async_api import async_playwright, Route
 from handlers.linkedin_handler import LinkedInHandler
+
+
+def test_resolve_profile_answer_tech_and_yoe():
+    handler = LinkedInHandler(page=MagicMock(), profile={})
+
+    # Default experience when not set in profile should be 4
+    assert handler._resolve_profile_answer("How many years of work experience do you have with Python?") == "4"
+    assert handler._resolve_profile_answer("React YOE") == "4"
+    assert handler._resolve_profile_answer("How long have you used AWS?") == "4"
+    assert handler._resolve_profile_answer("Do you have experience in C++?") == "4"
+    assert handler._resolve_profile_answer("Have you worked with Node.js?") == "Yes"
+
+    # When profile preferences sets years_of_experience explicitly
+    handler_custom = LinkedInHandler(page=MagicMock(), profile={"preferences": {"years_of_experience": 4}})
+    assert handler_custom._resolve_profile_answer("Years of experience with Docker") == "4"
+
 
 @pytest.mark.asyncio
 async def test_verify_submission_confirmed_phrases():
