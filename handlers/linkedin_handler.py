@@ -193,24 +193,16 @@ class LinkedInHandler:
                     submitted = True
                 break
 
-        # 6. Final verification
-        await asyncio.sleep(0.3)
+        # 6. Final verification — ONLY trust an explicit confirmation.
+        # A closed modal is NOT proof of submission (it can close from a
+        # wrong button click, a validation error, or losing scope) — that
+        # was producing false "applied" statuses. Better to under-report
+        # (mark "stuck" for manual check) than to lie about a submission.
+        await asyncio.sleep(0.5)
         if submitted or await self._verify_submission_confirmed(root):
             return {"status": "applied", "reason": None}
 
-        # Check if modal closed after submit
-        try:
-            modal_visible = False
-            for sel in ['div[role="dialog"]', '.artdeco-modal', '.jobs-easy-apply-modal']:
-                if await self.page.locator(sel).count() > 0 and await self.page.locator(sel).first.is_visible():
-                    modal_visible = True
-                    break
-            if not modal_visible:
-                return {"status": "applied", "reason": "Modal closed after submission"}
-        except Exception:
-            pass
-
-        return {"status": "stuck", "reason": "Easy Apply flow incomplete or required fields missing"}
+        return {"status": "stuck", "reason": "Easy Apply flow ended without a confirmed submission — needs manual check"}
 
     async def _fill_form_step(self, root: Locator):
         """Extracts and fills fields present in current step root container."""
@@ -532,6 +524,9 @@ class LinkedInHandler:
             "your application was sent",
             "application was submitted",
             "thank you for applying",
+            "application sent",
+            "your application has been sent",
+            "you applied",
         ]
         try:
             text = await self.page.evaluate("document.body ? document.body.innerText : ''")
