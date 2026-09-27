@@ -1,10 +1,12 @@
 import asyncio
 import os
+import pytest
 from core.browser_manager import BrowserManager
 from handlers.linkedin_handler import LinkedInHandler
 from core.llm import GroqPool
 import yaml
 
+@pytest.mark.asyncio
 async def test():
     config_path = "config.yaml" if os.path.exists("config.yaml") else "config.example.yaml"
     with open(config_path, "r", encoding="utf-8-sig") as f:
