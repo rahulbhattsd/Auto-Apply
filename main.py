@@ -50,7 +50,20 @@ async def run_one_job(job_id: int, job_url: str, db: Database, config: dict, llm
             print(f"[⏭] Job #{job_id} skipped: {reason}")
         elif status == "stuck":
             db.update_job_status(job_id, "stuck", reason)
-            print(f"[⏸] Job #{job_id} stuck: {reason}")
+            os.makedirs("./debug", exist_ok=True)
+            screenshot_path = f"./debug/job_{job_id}_stuck.png"
+            html_path = f"./debug/job_{job_id}_stuck.html"
+            try:
+                await page.screenshot(path=screenshot_path, full_page=True)
+            except Exception:
+                pass
+            try:
+                content = await page.content()
+                with open(html_path, "w", encoding="utf-8", errors="replace") as f:
+                    f.write(content)
+            except Exception:
+                pass
+            print(f"[⏸] Job #{job_id} stuck: {reason}. Debug files saved.")
         elif status == "blocked":
             db.update_job_status(job_id, "blocked", reason)
             print(f"[🛑] Job #{job_id} blocked: {reason}")

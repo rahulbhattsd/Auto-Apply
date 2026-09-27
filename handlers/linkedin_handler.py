@@ -250,7 +250,7 @@ class LinkedInHandler:
         lbl = label.lower()
         pers = self.profile.get("personal", {})
         links = self.profile.get("links", {})
-        work = self.profile.get("work_eligibility", {})
+        work = self.profile.get("eligibility", {}) or self.profile.get("work_eligibility", {})
         prefs = self.profile.get("preferences", {})
 
         if "first name" in lbl:
@@ -273,9 +273,15 @@ class LinkedInHandler:
             return links.get("portfolio", "https://rahulbhatt.dev")
 
         if "sponsorship" in lbl or "visa" in lbl:
-            return "No" if not work.get("requires_sponsorship", False) else "Yes"
+            spon = work.get("require_visa_sponsorship")
+            if spon is None:
+                spon = work.get("requires_sponsorship", False)
+            return "No" if not spon else "Yes"
         if "authorized" in lbl or "legally" in lbl:
-            return "Yes" if work.get("authorized_to_work", True) else "No"
+            auth = work.get("authorized_to_work_in_india")
+            if auth is None:
+                auth = work.get("authorized_to_work", True)
+            return "Yes" if auth else "No"
         if "experience" in lbl or "years" in lbl or "yoe" in lbl or "yrs" in lbl or "how long" in lbl:
             return str(prefs.get("years_of_experience", 4))
         if "have you" in lbl or "do you have" in lbl:
@@ -431,6 +437,8 @@ class LinkedInHandler:
 
                 try:
                     await radio_to_click.click(force=True)
+                    if not answer:
+                        print(f"[warn] Radio guess (no match): '{label}' -> picked first option")
                 except Exception:
                     pass
         except Exception:
