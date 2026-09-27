@@ -54,6 +54,9 @@ class BrowserManager:
             "viewport": {"width": 1366, "height": 800},
             "locale": "en-US",
             "timezone_id": "Asia/Kolkata",
+            "extra_http_headers": {
+                "Accept-Language": "en-US,en;q=0.9",
+            },
         }
 
         if os.path.exists(STATE_FILE):

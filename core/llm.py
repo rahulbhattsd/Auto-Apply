@@ -37,15 +37,17 @@ def _profile_summary(profile: dict, max_chars: int = 500) -> str:
         return profile[:max_chars]
     pers = profile.get("personal", {}) or {}
     prefs = profile.get("preferences", {}) or {}
-    work = profile.get("work_eligibility", {}) or {}
+    work = profile.get("eligibility", {}) or profile.get("work_eligibility", {}) or {}
+    spon = work.get("require_visa_sponsorship", work.get("requires_sponsorship", False))
+    auth = work.get("authorized_to_work_in_india", work.get("authorized_to_work", True))
     loc = pers.get("location", {})
     parts = [
         f"Role target: {', '.join(profile.get('job_search', {}).get('target_roles', []) or [])}",
         f"Experience: {prefs.get('years_of_experience', '')} yrs",
         f"Notice period: {prefs.get('notice_period_days', '')} days",
         f"Expected CTC: {prefs.get('expected_salary', '')}",
-        f"Sponsorship needed: {work.get('requires_sponsorship', False)}",
-        f"Authorized to work: {work.get('authorized_to_work', True)}",
+        f"Sponsorship needed: {spon}",
+        f"Authorized to work: {auth}",
         f"Location: {loc.get('city', '') if isinstance(loc, dict) else loc}",
     ]
     return " | ".join(p for p in parts if p)[:max_chars]
